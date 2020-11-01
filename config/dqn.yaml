@@ -1,18 +1,19 @@
-NAME: 'dqn_first_run'
+NAME: 'dqn_scratch'
 TYPE: 'dqn'
 
 MODEL:
-  LOSS: 'huber'
+  LOSS: 'mse'
+  INIT: 'xavier'
   ARCH: [512, 256, 64]
   MISC:
     DUELING: True
-
+#  LOAD_FILE: 'weights\double_dqn_experiment_1\double_dqn_experiment_1-epoch_best.ckpt'
 TRAIN:
   MAX_EPISODES: 50
   WAIT_EPISODES: 5
+  MEMORY_LEN: 20000
 
 HYPERPARAMS:
-  LEARNING_RATE: 0.0005
-  GAMMA: 0.99
-  BATCH_SIZE: 64
-
+  LEARNING_RATE: 0.00025
+  GAMMA: 1.
+  BATCH_SIZE: 32

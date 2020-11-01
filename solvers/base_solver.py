@@ -18,6 +18,7 @@ CUR = os.path.abspath(os.path.dirname(__file__))
 
 class BaseSolver():
     def __init__(self, cfg):
+        self.cfg = cfg
         # Hyperparams
         self.learning_rate = cfg.HYPERPARAMS.LEARNING_RATE
         self.gamma = cfg.HYPERPARAMS.GAMMA
@@ -48,7 +49,7 @@ class BaseSolver():
         self.save_path = '../experiments/' + cfg.NAME + '.json'
         self.weights_path = join('weights', cfg.NAME)
         self.name = cfg.NAME
-        self.cfg = cfg
+
 
         # Load weights
         if cfg.MODEL.LOAD_FILE != '':
@@ -118,10 +119,15 @@ class BaseSolver():
             raise NotImplementedError('TODO')
 
     def create_agent(self, agent_type, arch, misc, init):
+        # Get input shape
+        proxy_env = self.create_env(self.cfg.ENV.NAME)
+        s = proxy_env.reset()
+        del proxy_env
         # Agent
         if agent_type == 'ffn':
             from models.ffn import Agent
             agent = Agent(arch, self.env.action_space.n, misc.DUELING, init)
+            agent.build((None, s.shape[-1]))
             return agent
 
         else:

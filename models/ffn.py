@@ -29,7 +29,8 @@ class Agent(tf.keras.Model):
             self.init = tf.initializers.RandomNormal(mean=0.0, stddev=0.01)
 
         self.action_size = action_size
-        self.fc_layers = [layers.Dense(units, activation="relu", kernel_initializer=self.init) for units in hidden_units]
+        self.fc_layers = [layers.Dense(units, activation="relu",
+                                       kernel_initializer=self.init) for units in hidden_units]
         self.value_head = layers.Dense(1, kernel_initializer=self.init)
         self.advantage_head = layers.Dense(action_size, kernel_initializer=self.init)
         self.dueling = dueling

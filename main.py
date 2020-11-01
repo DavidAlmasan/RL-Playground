@@ -11,7 +11,7 @@ CUR = os.path.abspath(os.path.dirname(__file__))
 ###################################
 # Name of cfg used for experiment #
 ###################################
-cfg_name = 'ddqn.yaml'
+cfg_name = 'dqn.yaml'
 
 # Parse new config into default one
 if cfg_name is not None:
