@@ -1,0 +1,31 @@
+{
+    "ENV": {
+        "NAME": "CartPole-v0"
+    },
+    "HYPERPARAMS": {
+        "BATCH_SIZE": 32,
+        "GAMMA": 1,
+        "LEARNING_RATE": 0.00025
+    },
+    "LOGPATH": "../experiments/Base.json",
+    "MODEL": {
+        "ARCH": [
+            512,
+            256,
+            64
+        ],
+        "MISC": {
+            "DUELING": false
+        },
+        "TYPE": "ffn"
+    },
+    "NAME": "Base",
+    "TRAIN": {
+        "MAX_EPISODES": 200,
+        "MAX_STEPS": 500,
+        "MEMORY_LEN": 200000,
+        "OPTIMIZER": "adam",
+        "WAIT_EPISODES": 10
+    },
+    "WEIGHTS": null
+}

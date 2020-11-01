@@ -1,0 +1,9 @@
+NAME: 'dqn_experiment_1'
+MODEL:
+  LOSS: 'mse'
+  MISC:
+    DUELING: False
+
+TRAIN:
+  MAX_EPISODES: 2
+  WAIT_EPISODES: 0
