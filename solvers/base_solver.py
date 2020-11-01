@@ -21,8 +21,8 @@ class BaseSolver():
         # Hyperparams
         self.learning_rate = cfg.HYPERPARAMS.LEARNING_RATE
         self.gamma = cfg.HYPERPARAMS.GAMMA
+        self.eps_red_factor = cfg.HYPERPARAMS.GAMMA_FACTOR
         self.batch_size = cfg.HYPERPARAMS.BATCH_SIZE
-        self.eps_red_factor = 0.999
 
         # Training params
         self.max_steps_per_episode = cfg.TRAIN.MAX_STEPS
@@ -38,23 +38,32 @@ class BaseSolver():
         self.agent, self.optimizer = None, None
         self.agent = self.create_agent(cfg.MODEL.TYPE,
                                        cfg.MODEL.ARCH,
-                                       cfg.MODEL.MISC)
+                                       cfg.MODEL.MISC,
+                                       cfg.MODEL.INIT)
 
+        self.optimizer = self.create_optimizer(cfg.TRAIN.OPTIMIZER)
         self.criterion = self.build_loss(cfg.MODEL.LOSS)
 
         # Misc
-        self.save_path = cfg.LOGPATH
-        self.weights_path = join('weights', cfg.WEIGHTS)
+        self.save_path = '../experiments/' + cfg.NAME + '.json'
+        self.weights_path = join('weights', cfg.NAME)
         self.name = cfg.NAME
         self.cfg = cfg
 
+        # Load weights
+        if cfg.MODEL.LOAD_FILE != '':
+            print('Loading weights from file: {}'.format(cfg.MODEL.LOAD_FILE))
+            self.agent.load_weights(cfg.MODEL.LOAD_FILE)
+
     def build_loss(self, loss_type):
         if loss_type == 'mse':
-            return MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM)
+            loss = MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM)
         elif loss_type == 'huber':
-            return Huber(reduction=tf.keras.losses.Reduction.SUM)
+            loss = Huber(reduction=tf.keras.losses.Reduction.SUM)
         else:
             raise NotImplementedError('TODO')
+
+        return loss
 
     def preprocess(self, state):
         return np.expand_dims(state, axis=0)
@@ -108,12 +117,12 @@ class BaseSolver():
         else:
             raise NotImplementedError('TODO')
 
-    def create_agent(self, agent_type, arch, misc):
+    def create_agent(self, agent_type, arch, misc, init):
         # Agent
         if agent_type == 'ffn':
             from models.ffn import Agent
-            ag = Agent(arch, self.env.action_space.n, misc.DUELING)
-            return ag
+            agent = Agent(arch, self.env.action_space.n, misc.DUELING, init)
+            return agent
 
         else:
             raise NotImplementedError('TODO')

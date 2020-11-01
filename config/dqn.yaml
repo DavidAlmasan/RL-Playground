@@ -1,0 +1,18 @@
+NAME: 'dqn_first_run'
+TYPE: 'dqn'
+
+MODEL:
+  LOSS: 'huber'
+  ARCH: [512, 256, 64]
+  MISC:
+    DUELING: True
+
+TRAIN:
+  MAX_EPISODES: 50
+  WAIT_EPISODES: 5
+
+HYPERPARAMS:
+  LEARNING_RATE: 0.0005
+  GAMMA: 0.99
+  BATCH_SIZE: 64
+

@@ -5,10 +5,12 @@ from easydict import EasyDict as edict
 __C = edict()
 cfg = __C
 
+# Implemented models
+TYPES = ['dqn', 'ddqn']
+
 # Name, save path and weights path
 cfg.NAME = 'experiment_1'
-cfg.LOGPATH = '../experiments/' + cfg.NAME + '.json'
-cfg.WEIGHTS = cfg.NAME
+cfg.TYPE = 'dqn'
 
 # Env
 cfg.ENV = edict()
@@ -19,6 +21,9 @@ cfg.MODEL = edict()
 cfg.MODEL.TYPE = 'ffn'  # plan to use ffn, conv, seq
 cfg.MODEL.ARCH = [512, 256, 64]
 cfg.MODEL.LOSS = 'mse'  # plan to use mse, huber cross-entropy
+cfg.MODEL.LOAD_FILE = ''
+cfg.MODEL.INIT = 'xavier'  # xavier or gauss
+
 # Model misc
 cfg.MODEL.MISC = edict()
 cfg.MODEL.MISC.DUELING = False   # Dueling architecture
@@ -26,7 +31,8 @@ cfg.MODEL.MISC.DUELING = False   # Dueling architecture
 # Hyperparameters
 cfg.HYPERPARAMS = edict()
 cfg.HYPERPARAMS.LEARNING_RATE = 0.00025
-cfg.HYPERPARAMS.GAMMA = 1
+cfg.HYPERPARAMS.GAMMA = 1.
+cfg.HYPERPARAMS.GAMMA_FACTOR = 0.999
 cfg.HYPERPARAMS.BATCH_SIZE = 32
 
 # Train params

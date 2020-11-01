@@ -45,7 +45,7 @@ def bottom_n_percent(l, n):
 
 def plot_metrics(metrics_file):
     with open(metrics_file, 'r') as file_:
-        lines = file_.readlines()[6:]
+        lines = file_.readlines()[1:]
     mu, bot, loss = [], [], []
     for line in lines:
         line = line.rstrip().split(',')

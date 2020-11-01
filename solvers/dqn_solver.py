@@ -18,7 +18,8 @@ class DQNSolver(BaseSolver):
         self.ddqn_prob = 0
         self.target_agent = self.create_agent(cfg.MODEL.TYPE,
                                               cfg.MODEL.ARCH,
-                                              cfg.MODEL.MISC)
+                                              cfg.MODEL.MISC,
+                                              cfg.MODEL.INIT)
 
     def train(self):
         itx = 0
@@ -35,14 +36,17 @@ class DQNSolver(BaseSolver):
 
         for episode in range(self.max_episodes):
             loss = 0.
-            print('Training at episode: {}'.format(episode + 1))
+            if episode >= self.wait_episodes:
+                print('Training at episode: {}'.format(episode + 1))
+            else:
+                print('Burn in period. Not training yet')
             s = self.env.reset()
             for t in range(self.max_steps_per_episode):
                 # Epsilon greedy with eps = 1/(itx+1)
                 action, eps = self.epsilon_greedy(itx, s)
                 s_, r, d, _ = self.env.step(action)
                 if d:
-                    r = -100
+                    r = -100.
                 self.remember(self.preprocess(s),
                               action,
                               r,
@@ -54,6 +58,7 @@ class DQNSolver(BaseSolver):
                         loss += self.train_step(self.agent, self.target_agent)
                     else:
                         loss += self.train_step(self.target_agent, self.agent)
+
                 itx += 1
                 if d:
                     loss = float("{:.2f}".format(loss / (t + 1)))

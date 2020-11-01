@@ -1,0 +1,19 @@
+NAME: 'ddqn_scratch'
+TYPE: 'ddqn'
+
+MODEL:
+  LOSS: 'mse'
+  INIT: 'xavier'
+  ARCH: [512, 256, 64]
+  MISC:
+    DUELING: True
+#  LOAD_FILE: 'weights\double_dqn_experiment_1\double_dqn_experiment_1-epoch_best.ckpt'
+TRAIN:
+  MAX_EPISODES: 50
+  WAIT_EPISODES: 5
+  MEMORY_LEN: 20000
+
+HYPERPARAMS:
+  LEARNING_RATE: 0.00025
+  GAMMA: 1.
+  BATCH_SIZE: 32

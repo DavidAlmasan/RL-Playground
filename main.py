@@ -11,7 +11,7 @@ CUR = os.path.abspath(os.path.dirname(__file__))
 ###################################
 # Name of cfg used for experiment #
 ###################################
-cfg_name = 'dqn_cfg.yaml'
+cfg_name = 'ddqn.yaml'
 
 # Parse new config into default one
 if cfg_name is not None:
@@ -19,7 +19,12 @@ if cfg_name is not None:
     cfg_from_file(cfg_path)
 
 # Instantiate the solver
-solver = DDQNSolver(cfg)
+if cfg.TYPE == 'dqn':
+    solver = DQNSolver(cfg)
+elif cfg.TYPE == 'ddqn':
+    solver = DDQNSolver(cfg)
+else:
+    raise NotADirectoryError('TODO')
 
 # Train
 solver.train()
