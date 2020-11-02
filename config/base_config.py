@@ -6,7 +6,7 @@ __C = edict()
 cfg = __C
 
 # Implemented models
-TYPES = ['dqn', 'ddqn']
+TYPES = ['dqn', 'ddqn', 'a2c']
 
 # Name, save path and weights path
 cfg.NAME = 'experiment_1'

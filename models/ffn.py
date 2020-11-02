@@ -3,14 +3,19 @@ from tensorflow.keras import layers
 
 
 class ActorCritic(tf.keras.Model):
-    def __init__(self, hidden_units, action_size):
+    def __init__(self, hidden_units, action_size, init):
         """Initialize."""
         super(ActorCritic, self).__init__()
 
+        if init == 'xavier':
+            self.init = tf.initializers.GlorotNormal()
+        elif init == 'gauss':
+            self.init = tf.initializers.RandomNormal(mean=0.0, stddev=0.01)
         self.action_size = action_size
-        self.fc_layers = [layers.Dense(units, activation="relu") for units in hidden_units]
-        self.actor = layers.Dense(action_size)
-        self.critic = layers.Dense(1)
+        self.fc_layers = [layers.Dense(units, activation="relu",
+                                       kernel_initializer=self.init) for units in hidden_units]
+        self.actor = layers.Dense(action_size, kernel_initializer=self.init)
+        self.critic = layers.Dense(1, kernel_initializer=self.init)
 
     def call(self, x):
         for fc_layer in self.fc_layers:

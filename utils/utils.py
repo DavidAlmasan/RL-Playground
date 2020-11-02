@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def play(environment, policy=None, num_steps=1000, render=True):
+def play(environment, policy=None, num_steps=1000, render=True, multihead=False):
     """
     :param environment: env
     :param policy: agent that plays in given env
@@ -26,7 +26,10 @@ def play(environment, policy=None, num_steps=1000, render=True):
         if render:
             environment.render()
         s = np.expand_dims(np.asarray(s), axis=0)
-        actions = np.squeeze(policy(s, training=False).numpy())
+        if multihead:
+            actions = np.squeeze(policy(s, training=False)[0].numpy())
+        else:
+            actions = np.squeeze(policy(s, training=False).numpy())
         action = np.argmax(actions)
         s, r, d, _ = environment.step(action)
         if d:

@@ -69,12 +69,12 @@ class BaseSolver():
     def preprocess(self, state):
         return np.expand_dims(state, axis=0)
 
-    def validate_agent(self):
+    def validate_agent(self, multihead=False):
         steps = []
         games = 100
         perc = 1
         for _ in range(games):
-            steps.append(play(self.env, self.agent, 200, False))
+            steps.append(play(self.env, self.agent, 200, False, multihead))
         print('Average timesteps of {} games : {}'.format(games, colored(np.mean(steps), 'green')))
         print('STD of  timesteps of {} games : {}'.format(games, colored(float("{:.2f}".format(np.std(steps))),
                                                                          'green')))
@@ -152,6 +152,6 @@ class BaseSolver():
     def train(self):
         print('Implementation depends on type of solver used')
 
-    def train_step(self, agent, target_agent):
+    def train_step(self, agent):
         print('Implementation depends on type of solver used')
 
