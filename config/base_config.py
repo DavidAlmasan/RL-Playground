@@ -43,6 +43,13 @@ cfg.TRAIN.MAX_EPISODES = 200
 cfg.TRAIN.WAIT_EPISODES = 10
 cfg.TRAIN.MEMORY_LEN = 200000
 
+# Async params if Async solver
+cfg.ASYNC = edict()
+cfg.ASYNC.USE = False
+cfg.ASYNC.THREADS = 2
+cfg.ASYNC.DOWNLOAD_CYCLE = 10
+cfg.ASYNC.UPLOAD_CYCLE = 20
+cfg.ASYNC.VALIDATE_CYCLE = 5
 
 def _merge_a_into_b(a, b):
     """Merge config dictionary a into config dictionary b, clobbering the

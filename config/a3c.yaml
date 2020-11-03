@@ -1,0 +1,22 @@
+NAME: 'a3c_scratch'
+TYPE: 'a2c'
+
+MODEL:
+  LOSS: 'huber'
+  INIT: 'xavier'
+  ARCH: [512, 256, 64]
+#  LOAD_FILE: 'weights\double_dqn_experiment_1\double_dqn_experiment_1-epoch_best.ckpt'
+TRAIN:
+  MAX_EPISODES: 200
+
+HYPERPARAMS:
+  LEARNING_RATE: 0.00025
+  GAMMA: 1.
+  BATCH_SIZE: 64
+
+ASYNC:
+  USE: True
+  THREADS: 16
+  DOWNLOAD_CYCLE: 10
+  UPLOAD_CYCLE: 5
+  VALIDATE_CYCLE: 10

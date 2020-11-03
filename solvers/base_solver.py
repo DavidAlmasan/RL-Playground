@@ -37,7 +37,8 @@ class BaseSolver():
         self.agent_misc = cfg.MODEL.MISC
         self.env = self.create_env(cfg.ENV.NAME)
         self.agent, self.optimizer = None, None
-        self.agent = self.create_agent(cfg.MODEL.TYPE,
+        self.agent = self.create_agent(cfg.TYPE,
+                                       cfg.MODEL.TYPE,
                                        cfg.MODEL.ARCH,
                                        cfg.MODEL.MISC,
                                        cfg.MODEL.INIT)
@@ -118,15 +119,19 @@ class BaseSolver():
         else:
             raise NotImplementedError('TODO')
 
-    def create_agent(self, agent_type, arch, misc, init):
+    def create_agent(self, algorithm_type, agent_type, arch, misc, init):
         # Get input shape
         proxy_env = self.create_env(self.cfg.ENV.NAME)
         s = proxy_env.reset()
         del proxy_env
         # Agent
         if agent_type == 'ffn':
-            from models.ffn import Agent
-            agent = Agent(arch, self.env.action_space.n, misc.DUELING, init)
+            if algorithm_type == 'a2c':
+                from models.ffn import ActorCritic
+                agent = ActorCritic(arch, self.env.action_space.n, init)
+            else:
+                from models.ffn import Agent
+                agent = Agent(arch, self.env.action_space.n, misc.DUELING, init)
             agent.build((None, s.shape[-1]))
             return agent
 
