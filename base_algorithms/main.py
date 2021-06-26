@@ -13,7 +13,7 @@ CUR = os.path.abspath(os.path.dirname(__file__))
 ###################################
 # Name of cfg used for experiment #
 ###################################
-cfg_name = 'a3c.yaml'
+cfg_name = 'a2c.yaml'
 
 # Parse new config into default one
 if cfg_name is not None:

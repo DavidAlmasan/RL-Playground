@@ -1,0 +1,41 @@
+{
+    "ASYNC": {
+        "DOWNLOAD_CYCLE": 10,
+        "THREADS": 2,
+        "UPLOAD_CYCLE": 20,
+        "USE": false,
+        "VALIDATE_CYCLE": 5
+    },
+    "ENV": {
+        "NAME": "CartPole-v0"
+    },
+    "HYPERPARAMS": {
+        "BATCH_SIZE": 64,
+        "GAMMA": 1.0,
+        "GAMMA_FACTOR": 0.999,
+        "LEARNING_RATE": 0.00025
+    },
+    "MODEL": {
+        "ARCH": [
+            512,
+            256,
+            64
+        ],
+        "INIT": "xavier",
+        "LOAD_FILE": "",
+        "LOSS": "huber",
+        "MISC": {
+            "DUELING": false
+        },
+        "TYPE": "ffn"
+    },
+    "NAME": "a2c_scratch",
+    "TRAIN": {
+        "MAX_EPISODES": 200,
+        "MAX_STEPS": 500,
+        "MEMORY_LEN": 20000,
+        "OPTIMIZER": "adam",
+        "WAIT_EPISODES": 1
+    },
+    "TYPE": "a2c"
+}

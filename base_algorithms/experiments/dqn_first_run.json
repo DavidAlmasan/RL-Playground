@@ -1,0 +1,34 @@
+{
+    "ENV": {
+        "NAME": "CartPole-v0"
+    },
+    "HYPERPARAMS": {
+        "BATCH_SIZE": 64,
+        "GAMMA": 0.99,
+        "GAMMA_FACTOR": 0.999,
+        "LEARNING_RATE": 0.0005
+    },
+    "MODEL": {
+        "ARCH": [
+            512,
+            256,
+            64
+        ],
+        "INIT": "xavier",
+        "LOAD_FILE": "",
+        "LOSS": "huber",
+        "MISC": {
+            "DUELING": true
+        },
+        "TYPE": "ffn"
+    },
+    "NAME": "dqn_first_run",
+    "TRAIN": {
+        "MAX_EPISODES": 50,
+        "MAX_STEPS": 500,
+        "MEMORY_LEN": 200000,
+        "OPTIMIZER": "adam",
+        "WAIT_EPISODES": 5
+    },
+    "TYPE": "dqn"
+}
