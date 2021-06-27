@@ -10,54 +10,62 @@ import tensorflow as tf
 from tensorflow.keras.optimizers import Adam, RMSprop
 from tensorflow.keras.losses import MeanSquaredError, Huber
 
-from utils.utils import bottom_n_percent, play
+from base_algorithms.utils.utils import bottom_n_percent, play
 
 colorama.init()
+# Some globals
 CUR = os.path.abspath(os.path.dirname(__file__))
-
+ALLOWED_ENVIRONMENTS = ['BypedalWalker-v2', 'Breakout-v0', 'CarRacing-v0']
+ALLOWED_OPTIMIZERS = ['adam', 'sgd', 'rmsprop', 'radam']
+ALLOWED_MODELS = ['resnet18', 'small_cnn', 'medium_cnn', 'small_mlp', 'medium_mlp', 'other']
 
 class BaseSolver():
     def __init__(self, cfg):
         self.cfg = cfg
+        self.agent_cfg = self.cfg.AGENT
         # Hyperparams
-        self.learning_rate = cfg.HYPERPARAMS.LEARNING_RATE
-        self.gamma = cfg.HYPERPARAMS.GAMMA
-        self.eps_red_factor = cfg.HYPERPARAMS.GAMMA_FACTOR
-        self.batch_size = cfg.HYPERPARAMS.BATCH_SIZE
+        self.learning_rate = self.agent_cfg.HYPERPARAMS.LEARNING_RATE
+        self.gamma = self.agent_cfg.HYPERPARAMS.GAMMA
 
         # Training params
-        self.max_steps_per_episode = cfg.TRAIN.MAX_STEPS
+        self.batch_size = cfg.TRAIN.BATCH_SIZE
+        self.max_steps_per_episode = cfg.TRAIN.MAX_STEPS_EPISODE
         self.max_episodes = cfg.TRAIN.MAX_EPISODES
         self.wait_episodes = cfg.TRAIN.WAIT_EPISODES
         self.log_episodes = [int(float(self.max_episodes) * i / 10) for i in range(11)]
         self.memory = deque(maxlen=cfg.TRAIN.MEMORY_LEN)
 
         # Env, agent, optimizer and loss
-        self.arch = cfg.MODEL.ARCH
-        self.agent_misc = cfg.MODEL.MISC
-        self.env = self.create_env(cfg.ENV.NAME)
-        self.agent, self.optimizer = None, None
-        self.agent = self.create_agent(cfg.TYPE,
-                                       cfg.MODEL.TYPE,
-                                       cfg.MODEL.ARCH,
-                                       cfg.MODEL.MISC,
-                                       cfg.MODEL.INIT)
+        self.env, self.agent, self.optimizer = None, None, None
+        if cfg.EXPERIMENT.NAME in ALLOWED_ENVIRONMENTS:
+            self.env = self.create_env(cfg.EXPERIMENT.NAME)
+        else:
+            raise NotImplementedError('Experiment name: {} not in {}'.format(cfg.EXPERIMENT.NAME, ALLOWED_ENVIRONMENTS))
+        
+        if self.agent_cfg.MODEL in ALLOWED_MODELS:
+            self.agent = self.create_agent(self.agent_cfg)
+        else:
+            raise NotImplementedError('Model name: {} not in {}'.format(self.agent_cfg.MODEL, ALLOWED_MODELS))
 
-        self.optimizer = self.create_optimizer(cfg.TRAIN.OPTIMIZER)
-        self.criterion = self.build_loss(cfg.MODEL.LOSS)
+        if cfg.TRAIN.OPTIMIZER in ALLOWED_OPTIMIZERS:
+            self.optimizer = self.create_optimizer(cfg.TRAIN.OPTIMIZER)
+        else:
+            raise NotImplementedError('Optimizer name: {} not in {}'.format(cfg.TRAIN.OPTIMIZER, ALLOWED_OPTIMIZERS))
+
+        # self.criterion = self.build_loss(cfg.MODEL.LOSS)
 
         # Misc
-        self.save_path = '../experiments/' + cfg.NAME + '.json'
-        self.weights_path = join('weights', cfg.NAME)
-        self.name = cfg.NAME
+        self.save_path = 'experiments/' + cfg.EXPERIMENT.SUFFIX + '_' + cfg.EXPERIMENT.NAME + '.json'
+        self.weights_path = join('weights', cfg.EXPERIMENT.NAME)
+        self.name = cfg.EXPERIMENT.NAME
 
 
         # Load weights
-        if cfg.MODEL.LOAD_FILE != '':
-            print('Loading weights from file: {}'.format(cfg.MODEL.LOAD_FILE))
-            self.agent.load_weights(cfg.MODEL.LOAD_FILE)
+        if "LOAD_FILE" in self.agent_cfg.keys():
+            print('Loading weights from file: {}'.format(self.agent_cfg.LOAD_FILE))
+            self.agent.load_weights(self.agent_cfg.LOAD_FILE)
 
-    def build_loss(self, loss_type):
+    def build_loss(self, loss_type):  # TODO change this to pytorch
         if loss_type == 'mse':
             loss = MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM)
         elif loss_type == 'huber':
@@ -119,24 +127,21 @@ class BaseSolver():
         else:
             raise NotImplementedError('TODO')
 
-    def create_agent(self, algorithm_type, agent_type, arch, misc, init):
+    def create_agent(self, agent_config):
         # Get input shape
-        proxy_env = self.create_env(self.cfg.ENV.NAME)
+        proxy_env = self.create_env(self.cfg.EXPERIMENT.NAME)
         s = proxy_env.reset()
         del proxy_env
         # Agent
-        if agent_type == 'ffn':
-            if algorithm_type == 'a2c':
-                from models.ffn import ActorCritic
-                agent = ActorCritic(arch, self.env.action_space.n, init)
-            else:
-                from models.ffn import Agent
-                agent = Agent(arch, self.env.action_space.n, misc.DUELING, init)
-            agent.build((None, s.shape[-1]))
-            return agent
-
+        if agent_config.MODEL == "resnet18":
+            raise NotImplementedError('TODO')
+        elif agent_config.MODEL == 'small_cnn':
+            from rainbow.model import SmallCNN as Agent
         else:
             raise NotImplementedError('TODO')
+        
+        agent = Agent(s.shape[-1])
+        return agent
 
     def epsilon_greedy(self, t, s):
         eps = max(0.1, self.eps_red_factor ** t)
