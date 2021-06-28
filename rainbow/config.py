@@ -5,10 +5,12 @@ def get_config():
 
     # Experiment
     C.EXPERIMENT = ConfigDict()
-    ### Allowed names: ['BypedalWalker-v2', 'Breakout-v0']
-    C.EXPERIMENT.NAME = 'Breakout-v0'
+    ### Allowed names: ['Breakout-v4', 'Breakout-v0']
+    C.EXPERIMENT.NAME = 'Breakout-v4'
     C.EXPERIMENT.SUFFIX = 'trial1'
 
+    C.DATA = ConfigDict()
+    C.DATA.INPUT_SHAPE = (84, 84)
     # Agent
     C.AGENT = ConfigDict()
     ### Allowed models: ['resnet18', 'small_cnn', 'medium_cnn', 'small_mlp', 'medium_mlp', 'other']
@@ -16,6 +18,8 @@ def get_config():
     C.AGENT.HYPERPARAMS = ConfigDict()
     C.AGENT.HYPERPARAMS.LEARNING_RATE = 1e-4
     C.AGENT.HYPERPARAMS.GAMMA = 1.0
+    C.AGENT.HYPERPARAMS.EPS_REDUCTION_FACTOR = 0.99
+    C.AGENT.HYPERPARAMS.NUM_EPISODES_PER_SAMPLE = 4
 
     # Train
     C.TRAIN = ConfigDict()
@@ -23,7 +27,7 @@ def get_config():
     C.TRAIN.OPTIMIZER = 'adam'
     C.TRAIN.MAX_STEPS_EPISODE = 1000 
     C.TRAIN.MAX_EPISODES = 10
-    C.TRAIN.WAIT_EPISODES = 0
+    C.TRAIN.WAIT_SAMPLES = 100
     C.TRAIN.MEMORY_LEN = 10000
     C.TRAIN.BATCH_SIZE = 2
 

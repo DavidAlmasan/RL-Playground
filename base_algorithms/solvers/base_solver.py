@@ -9,13 +9,14 @@ import gym
 import torch
 import torch.optim
 import torch.nn
+from torchvision import transforms
 
 from base_algorithms.utils.utils import bottom_n_percent, play
 
 colorama.init()
 # Some globals
 CUR = os.path.abspath(os.path.dirname(__file__))
-ALLOWED_ENVIRONMENTS = ['BypedalWalker-v2', 'Breakout-v0', 'CarRacing-v0']
+ALLOWED_ENVIRONMENTS = ['Breakout-v0', 'Breakout-v4']
 ALLOWED_OPTIMIZERS = ['adam', 'sgd', 'rmsprop']
 ALLOWED_MODELS = ['resnet18', 'small_cnn', 'medium_cnn', 'small_mlp', 'medium_mlp', 'other']
 
@@ -26,12 +27,17 @@ class BaseSolver():
         # Hyperparams
         self.learning_rate = self.agent_cfg.HYPERPARAMS.LEARNING_RATE
         self.gamma = self.agent_cfg.HYPERPARAMS.GAMMA
+        self.eps_reduction_factor = self.agent_cfg.HYPERPARAMS.EPS_REDUCTION_FACTOR
+
+        # Data transforms
+        self.transforms = transforms.Compose([transforms.Resize(self.cfg.DATA.INPUT_SHAPE),
+                                              transforms.Grayscale(),
+                                              transforms.ToTensor()])
 
         # Training params
         self.batch_size = cfg.TRAIN.BATCH_SIZE
         self.max_steps_per_episode = cfg.TRAIN.MAX_STEPS_EPISODE
         self.max_episodes = cfg.TRAIN.MAX_EPISODES
-        self.wait_episodes = cfg.TRAIN.WAIT_EPISODES
         self.log_episodes = [int(float(self.max_episodes) * i / 10) for i in range(11)]
         self.memory = deque(maxlen=cfg.TRAIN.MEMORY_LEN)
 
@@ -60,6 +66,7 @@ class BaseSolver():
         self.name = cfg.EXPERIMENT.NAME
 
 
+
         # Load weights
         if "LOAD_FILE" in self.agent_cfg.keys():
             print('Loading weights from file: {}'.format(self.agent_cfg.LOAD_FILE))
@@ -76,7 +83,7 @@ class BaseSolver():
         return loss
 
     def preprocess(self, state):
-        return np.expand_dims(state, axis=0)
+        return self.transforms(state)
 
     def validate_agent(self, multihead=False):
         steps = []
@@ -133,6 +140,7 @@ class BaseSolver():
         # Get input shape
         proxy_env = self.create_env(self.cfg.EXPERIMENT.NAME)
         s = proxy_env.reset()
+        action_space_length = proxy_env.action_space.n
         del proxy_env
         # Agent
         if agent_config.MODEL == "resnet18":
@@ -142,20 +150,20 @@ class BaseSolver():
         else:
             raise NotImplementedError('TODO')
         
-        agent = Agent()
+        agent = Agent(action_space_length)
         return agent
 
     def epsilon_greedy(self, t, s):
-        eps = max(0.1, self.eps_red_factor ** t)
+        eps = max(0.1, self.eps_reduction_factor ** t)
         eps = float("{:.2f}".format(eps))
-        s = self.preprocess(s)
-        action_space = np.squeeze(self.agent(s).numpy())
+        # s = self.preprocess(s)
+        action_space = self.agent(s)
         if eps <= np.random.uniform(0, 0.9999):
             # Perform explore action
             action = self.env.action_space.sample()
         else:
             # Perform greedy action
-            action = np.argmax(action_space)
+            action = torch.argmax(action_space, dim=-1)
         return action, eps
 
     def remember(self, state, action, reward, next_state, done):
