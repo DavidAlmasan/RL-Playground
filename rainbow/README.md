@@ -9,7 +9,7 @@
 1. DQN (see ../base_algorithms)
 2. Double Q learning (see ../base_algorithms)
 3. Dueling Networks (see ../base_algorithms)
-4. Prioritied replay
+4. [Prioritied replay](https://arxiv.org/pdf/1511.05952.pdf)
 
 ![](./prioritised_replay.png?)
 

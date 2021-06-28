@@ -3,12 +3,26 @@ import torch
 from PIL import Image
 
 from base_algorithms.solvers.base_solver import BaseSolver
+from rainbow.replay_buffer import ReplayBuffer
 
 
 class RainbowSolver(BaseSolver):
     def __init__(self, cfg):
         super(RainbowSolver, self).__init__(cfg)
 
+        self.memory = ReplayBuffer(self.cfg.RAINBOW.REPLAY_BUFFER)
+        
+    def epsilon_greedy(self, t, s, ):
+        eps = max(0.1, self.eps_reduction_factor ** t)
+        eps = float("{:.2f}".format(eps))
+        q_values, probs = self.agent(s)
+        if eps <= np.random.uniform(0, 0.9999):
+            # Perform explore action
+            action = self.env.action_space.sample()
+        else:
+            # Perform greedy action
+            action = torch.argmax(probs, dim=-1)
+        return action, eps
 
     def preprocess(self, states):
         return torch.unsqueeze(torch.stack([torch.squeeze(self.transforms(Image.fromarray(s))) for s in states]), dim=0)

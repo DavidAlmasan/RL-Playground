@@ -39,7 +39,10 @@ class BaseSolver():
         self.max_steps_per_episode = cfg.TRAIN.MAX_STEPS_EPISODE
         self.max_episodes = cfg.TRAIN.MAX_EPISODES
         self.log_episodes = [int(float(self.max_episodes) * i / 10) for i in range(11)]
-        self.memory = deque(maxlen=cfg.TRAIN.MEMORY_LEN)
+        try:
+            self.memory = deque(maxlen=cfg.TRAIN.MEMORY_LEN)
+        except:
+            self.memory = None # specific module implenmentation of replay buffer 
 
         # Env, agent, optimizer and loss
         self.env, self.agent, self.optimizer = None, None, None

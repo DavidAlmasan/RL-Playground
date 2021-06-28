@@ -28,11 +28,16 @@ def get_config():
     C.TRAIN.MAX_STEPS_EPISODE = 1000 
     C.TRAIN.MAX_EPISODES = 10
     C.TRAIN.WAIT_SAMPLES = 100
-    C.TRAIN.MEMORY_LEN = 10000
     C.TRAIN.BATCH_SIZE = 2
 
     # Rainbow params
     C.RAINBOW = ConfigDict()
+    
+    # Replay buffer 
+    C.RAINBOW.REPLAY_BUFFER = ConfigDict()
+    C.RAINBOW.REPLAY_BUFFER.MEMORY_LEN = 100000
+    C.RAINBOW.REPLAY_BUFFER.ALPHA = 0.5
+    C.RAINBOW.REPLAY_BUFFER.BETA = 0.5
 
     return C
 
