@@ -6,9 +6,9 @@ from termcolor import *
 import colorama
 
 import gym
-import tensorflow as tf
-from tensorflow.keras.optimizers import Adam, RMSprop
-from tensorflow.keras.losses import MeanSquaredError, Huber
+import torch
+import torch.optim
+import torch.nn
 
 from base_algorithms.utils.utils import bottom_n_percent, play
 
@@ -16,7 +16,7 @@ colorama.init()
 # Some globals
 CUR = os.path.abspath(os.path.dirname(__file__))
 ALLOWED_ENVIRONMENTS = ['BypedalWalker-v2', 'Breakout-v0', 'CarRacing-v0']
-ALLOWED_OPTIMIZERS = ['adam', 'sgd', 'rmsprop', 'radam']
+ALLOWED_OPTIMIZERS = ['adam', 'sgd', 'rmsprop']
 ALLOWED_MODELS = ['resnet18', 'small_cnn', 'medium_cnn', 'small_mlp', 'medium_mlp', 'other']
 
 class BaseSolver():
@@ -48,7 +48,7 @@ class BaseSolver():
             raise NotImplementedError('Model name: {} not in {}'.format(self.agent_cfg.MODEL, ALLOWED_MODELS))
 
         if cfg.TRAIN.OPTIMIZER in ALLOWED_OPTIMIZERS:
-            self.optimizer = self.create_optimizer(cfg.TRAIN.OPTIMIZER)
+            self.optimizer = self.create_optimizer(cfg.TRAIN.OPTIMIZER, self.agent.parameters())
         else:
             raise NotImplementedError('Optimizer name: {} not in {}'.format(cfg.TRAIN.OPTIMIZER, ALLOWED_OPTIMIZERS))
 
@@ -67,9 +67,9 @@ class BaseSolver():
 
     def build_loss(self, loss_type):  # TODO change this to pytorch
         if loss_type == 'mse':
-            loss = MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM)
+            loss = torch.nn.MSELoss()
         elif loss_type == 'huber':
-            loss = Huber(reduction=tf.keras.losses.Reduction.SUM)
+            loss = torch.nn.HuberLoss()
         else:
             raise NotImplementedError('TODO')
 
@@ -118,12 +118,14 @@ class BaseSolver():
             path = join(path, '{}-epoch_{}.ckpt'.format(self.name, epoch))
             self.agent.save_weights(path)
 
-    def create_optimizer(self, optimizer_type):
+    def create_optimizer(self, optimizer_type, params):
         # Optimizer
         if optimizer_type == 'adam':
-            return Adam(self.learning_rate)
+            return torch.optim.Adam(params, self.learning_rate)
         elif optimizer_type == 'rmsprop':
-            return RMSprop(self.learning_rate)
+            return torch.optim.RMSprop(params, self.learning_rate)
+        elif optimizer_type == 'sgd':
+            return torch.optim.SGD(params, self.learning_rate)
         else:
             raise NotImplementedError('TODO')
 
@@ -140,7 +142,7 @@ class BaseSolver():
         else:
             raise NotImplementedError('TODO')
         
-        agent = Agent(s.shape[-1])
+        agent = Agent()
         return agent
 
     def epsilon_greedy(self, t, s):

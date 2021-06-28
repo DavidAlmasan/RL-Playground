@@ -1,13 +1,13 @@
 """Top level script used to train an agent using Rainbow framework"""
 import warnings
 
-from config import get_config
-from solver import Solver
+from rainbow.config import get_config
+from rainbow.solver import RainbowSolver
 
 
 def main(debug):
     config = get_config()
-    solver = Solver(config)
+    solver = RainbowSolver(config)
     solver.solve()
     print('Finished.')
 
