@@ -36,7 +36,7 @@ class SmallCNN(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         probs = F.softmax(x, dim=-1)
-        data = {'Q': x, 'probs': probs}
-        return data
+        # data = {'Q': x, 'probs': probs}
+        return x, probs
 
         

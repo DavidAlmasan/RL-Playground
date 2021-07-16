@@ -27,7 +27,7 @@ def get_config():
     C.TRAIN.OPTIMIZER = 'adam'
     C.TRAIN.MAX_STEPS_EPISODE = 1000 
     C.TRAIN.MAX_EPISODES = 10
-    C.TRAIN.WAIT_SAMPLES = 100
+    C.TRAIN.REPLAY_PERIOD = 4
     C.TRAIN.BATCH_SIZE = 2
 
     # Rainbow params
@@ -35,7 +35,7 @@ def get_config():
     
     # Replay buffer 
     C.RAINBOW.REPLAY_BUFFER = ConfigDict()
-    C.RAINBOW.REPLAY_BUFFER.MEMORY_LEN = 100000
+    C.RAINBOW.REPLAY_BUFFER.MEMORY_LEN = 1e5
     C.RAINBOW.REPLAY_BUFFER.ALPHA = 0.5
     C.RAINBOW.REPLAY_BUFFER.BETA = 0.5
 

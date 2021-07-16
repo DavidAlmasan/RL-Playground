@@ -6,10 +6,10 @@ from base_algorithms.solvers.base_solver import BaseSolver
 from rainbow.replay_buffer import ReplayBuffer
 
 
+
 class RainbowSolver(BaseSolver):
     def __init__(self, cfg):
         super(RainbowSolver, self).__init__(cfg)
-
         self.memory = ReplayBuffer(self.cfg.RAINBOW.REPLAY_BUFFER)
         
     def epsilon_greedy(self, t, s, ):
@@ -33,8 +33,14 @@ class RainbowSolver(BaseSolver):
         else:
             raise NotImplementedError('Only epislon greedy selection scheme supported')
 
-    def populate_memory(self, num_samples):
+    def solve(self):
+        """
+        1. Play some episodes using the untrained agent and store them in the memory
+            1.1 Use <Prioritied replay>
+        2. Start training using samples from the memory every REPLAY_PERIOD steps
+        """
         sample_idx = 0
+        episodes_played = 0
         while True:
             start = self.env.reset()
             s = [np.zeros_like(start)] * (self.cfg.AGENT.HYPERPARAMS.NUM_EPISODES_PER_SAMPLE - 1) + [start]
@@ -50,19 +56,23 @@ class RainbowSolver(BaseSolver):
                               action,
                               r,
                               self.preprocess(s_),
-                              d)
+                              d,
+                              sample_idx)
                 s = s_
                 sample_idx += 1
-                if sample_idx == num_samples:
-                    return
+
+                if sample_idx % self.cfg.TRAIN.REPLAY_PERIOD == 0 and sample_idx >= self.cfg.TRAIN.BATCH_SIZE:
+                    # Sample form the Replay memory and train agent
+                    batch_samples = self.memory.sample_transition(sample_idx, self.cfg.TRAIN.BATCH_SIZE)
 
 
-    def solve(self):
-        """
-        1. Play some episodes using the untrained agent and store them in the memory
-            1.1 Use <Prioritied replay>
-        2. Start training using samples from the memory
-        """
 
-        self.populate_memory(self.cfg.TRAIN.WAIT_SAMPLES)
-        print(self.memory[0][0].shape)
+
+
+
+
+                
+
+    def remember(self, state, action, reward, next_state, done, sample_idx):
+        transition = (state, action, reward, next_state, done)
+        self.memory.populate(transition, sample_idx)
