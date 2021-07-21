@@ -3,9 +3,12 @@ from os.path import join
 
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 
 
-def play(environment, policy=None, num_steps=1000, render=True, multihead=False):
+
+
+def play_tf(environment, policy=None, num_steps=1000, render=True, multihead=False):
     """
     :param environment: env
     :param policy: agent that plays in given env

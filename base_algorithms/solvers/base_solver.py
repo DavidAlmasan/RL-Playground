@@ -11,7 +11,7 @@ import torch.optim
 import torch.nn
 from torchvision import transforms
 
-from base_algorithms.utils.utils import bottom_n_percent, play
+from base_algorithms.utils.utils import bottom_n_percent, play_tf
 
 colorama.init()
 # Some globals
@@ -37,6 +37,7 @@ class BaseSolver():
         # Training params
         self.batch_size = cfg.TRAIN.BATCH_SIZE
         self.max_steps_per_episode = cfg.TRAIN.MAX_STEPS_EPISODE
+        self.max_steps_per_valepisode = cfg.TRAIN.MAX_STEPS_VALIDATION_EPISODE
         self.max_episodes = cfg.TRAIN.MAX_EPISODES
         self.log_episodes = [int(float(self.max_episodes) * i / 10) for i in range(11)]
         try:
@@ -48,11 +49,13 @@ class BaseSolver():
         self.env, self.agent, self.optimizer = None, None, None
         if cfg.EXPERIMENT.NAME in ALLOWED_ENVIRONMENTS:
             self.env = self.create_env(cfg.EXPERIMENT.NAME)
+            self.val_env = self.create_env(cfg.EXPERIMENT.NAME)
         else:
             raise NotImplementedError('Experiment name: {} not in {}'.format(cfg.EXPERIMENT.NAME, ALLOWED_ENVIRONMENTS))
         
         if self.agent_cfg.MODEL in ALLOWED_MODELS:
             self.agent = self.create_agent(self.agent_cfg)
+            self.target_agent = self.create_agent(self.agent_cfg)
         else:
             raise NotImplementedError('Model name: {} not in {}'.format(self.agent_cfg.MODEL, ALLOWED_MODELS))
 
@@ -61,7 +64,7 @@ class BaseSolver():
         else:
             raise NotImplementedError('Optimizer name: {} not in {}'.format(cfg.TRAIN.OPTIMIZER, ALLOWED_OPTIMIZERS))
 
-        # self.criterion = self.build_loss(cfg.MODEL.LOSS)
+        self.criterion = self.build_loss(cfg.TRAIN.LOSS)
 
         # Misc
         self.save_path = 'experiments/' + cfg.EXPERIMENT.SUFFIX + '_' + cfg.EXPERIMENT.NAME + '.json'
@@ -75,11 +78,11 @@ class BaseSolver():
             print('Loading weights from file: {}'.format(self.agent_cfg.LOAD_FILE))
             self.agent.load_weights(self.agent_cfg.LOAD_FILE)
 
-    def build_loss(self, loss_type):  # TODO change this to pytorch
+    def build_loss(self, loss_type):
         if loss_type == 'mse':
-            loss = torch.nn.MSELoss()
+            loss = torch.nn.MSELoss(reduction='none')
         elif loss_type == 'huber':
-            loss = torch.nn.HuberLoss()
+            loss = torch.nn.HuberLoss(reduction='none')
         else:
             raise NotImplementedError('TODO')
 
@@ -88,18 +91,19 @@ class BaseSolver():
     def preprocess(self, state):
         return self.transforms(state)
 
-    def validate_agent(self, multihead=False):
+    def validate_agent(self, games, num_steps, render, multihead=False):
+        self.agent.eval()
         steps = []
-        games = 100
         perc = 1
         for _ in range(games):
-            steps.append(play(self.env, self.agent, 200, False, multihead))
-        print('Average timesteps of {} games : {}'.format(games, colored(np.mean(steps), 'green')))
-        print('STD of  timesteps of {} games : {}'.format(games, colored(float("{:.2f}".format(np.std(steps))),
+            steps.append(self.play(num_steps, render))
+        print('Average reward of {} games : {}'.format(games, colored(np.mean(steps), 'green')))
+        print('STD of reward of {} games : {}'.format(games, colored(float("{:.2f}".format(np.std(steps))),
                                                                          'green')))
         bot_mean = bottom_n_percent(steps, perc)
-        print('Average timesteps of bottom {}% games : {}'.format(perc, colored(bot_mean, 'yellow')))
+        print('Average reward of bottom {}% games : {}'.format(perc, colored(bot_mean, 'yellow')))
         print('-----------------------------------')
+        self.agent.train()
         return np.mean(steps), float("{:.2f}".format(np.std(steps))), bot_mean
 
     def update_agent_weights(self, epoch=None):

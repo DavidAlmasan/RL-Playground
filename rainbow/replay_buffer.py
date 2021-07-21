@@ -44,10 +44,6 @@ class ReplayBuffer():
         # TODO: Move to binary heap instead of sampling according to the probabilities.
         # TODO: Right now we are not spliting the PROBABILITY range into equal parts but rather the MEMORY
         # then we sample according to those probabilities. i guess this works but it's weird
-        def chunks(lst, n):
-            """Yield successive n-sized chunks from lst."""
-            for i in range(0, len(lst), n):
-                yield lst[i:i + n]
 
         if idx >= self.memory_len:
             idx = self.memory_len
@@ -56,8 +52,8 @@ class ReplayBuffer():
 
         binsize, remainder = divmod(idx, batch_size)
         if remainder > 0:
-            binsize += 1
-        print(binsize, batch_size, remainder, idx)
+            binsize, remainder = divmod(idx + (binsize - remainder), batch_size)
+        # print(binsize, batch_size, remainder, idx)
         # splits = [batch_size] * num_bins
         # if remainder != 0:
         #     splits += [remainder]
@@ -65,24 +61,29 @@ class ReplayBuffer():
         # splits = [list(islice(idx_iter, elem)) for elem in splits]
         indices = list(range(idx))
         splits = [indices[i:i+binsize] for i in range(0, idx, binsize)]
-
+        # print('replay_buffer#l64: Length of splits is {}, should be {}. Extras: '.format(len(splits), batch_size), binsize, remainder, idx)
         batch_samples = []
         for idx_batch in splits:
             sample_probs = [self.memory[i].probability for i in idx_batch]
             sample_idx = random.choices(idx_batch, weights=sample_probs)[0]  # For some reason this is returned as a list ??
-            self.memory[sample_idx].weight /= self.max_w
+            while sample_idx >= idx:
+                sample_idx = random.choices(idx_batch, weights=sample_probs)[0]
+            self.memory[sample_idx].weight = torch.sigmoid(
+                            torch.tensor((self.memory_len * self.memory[sample_idx].probability) ** self.beta))
             batch_samples.append(self.memory[sample_idx])
+
+        # Adjust weights to be 0-1
         return batch_samples
             
     def update_transitions(self):
         """Updates all the probabilies and the IS weights needed for backprop"""
         # TODO: THIS IS NOT OPTIMISED. i think
-        self.max_w = 0
+        # self.max_w = 0
         for key in range(self.memory_len):
             self.memory[key].probability = self.memory[key].priority ** self.alpha / self.priority_normalising_sum
-            self.memory[key].weight = (self.memory_len * self.memory[key].probability) ** self.beta
-            if self.memory[key].weight > self.max_w:
-                self.max_w = self.memory[key].weight
+            # self.memory[key].weight = (self.memory_len * self.memory[key].probability) ** self.beta
+            # if self.memory[key].weight > self.max_w:
+            #     self.max_w = self.memory[key].weight
         
 
 
@@ -111,20 +112,31 @@ class ReplayBuffer():
                 self.max_w = self.memory[idx].weight
 
             
-            
+    def update_priorities(self, idx_list, new_priorities):
+        for idx, new_p in zip(idx_list, new_priorities):
+            prev_p = self.memory[idx].priority
 
-    def populate(self, transition, idx):  # Maybe don't need compute_weights here
+            # Update normalising factor
+            self.priority_normalising_sum -= prev_p ** self.alpha
+            self.priority_normalising_sum -= new_p ** self.alpha
+
+            self.memory[idx].priority = new_p
+
+            if new_p >= self.max_p:
+                self.max_p = new_p
+
+    def populate(self, transition, idx):
         q, idx = divmod(idx, self.memory_len)
 
         if q > 0:
             prev_entry = self.memory[idx]
             # Erase info from last entry 
-            self.memory[idx].probability = 0
+            self.memory[idx].probability = torch.tensor(0)
             
             # Adjust priority_normalising_sum
             self.priority_normalising_sum -= prev_entry.priority ** self.alpha
             if prev_entry.priority == self.max_p:
-                self.memory[idx].priority = 0
+                self.memory[idx].priority = torch.tensor(0)
                 self.max_p = max(self.memory.values(), key=lambda x: x.priority)
             
             # if compute_weights:
