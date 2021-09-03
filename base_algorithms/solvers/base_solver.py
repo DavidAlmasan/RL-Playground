@@ -11,7 +11,7 @@ import torch.optim
 import torch.nn
 from torchvision import transforms
 
-from base_algorithms.utils.utils import bottom_n_percent, play_tf
+from ...base_algorithms.utils.utils import bottom_n_percent, play_tf
 
 colorama.init()
 # Some globals
@@ -21,7 +21,61 @@ ALLOWED_OPTIMIZERS = ['adam', 'sgd', 'rmsprop']
 ALLOWED_MODELS = ['resnet18', 'small_cnn', 'medium_cnn', 'small_mlp', 'medium_mlp', 'other']
 
 class BaseSolver():
-    def __init__(self, cfg):
+    def __init__(self, cfg, agent=None, dataloader=None):
+        if agent is None:
+            assert dataloader is None, 'Dataloader should also be None if agent is None'
+            self.base_init(cfg)
+        else:
+            assert dataloader is not None, 'Dataloader should also NOT be None if agent is not None'
+            self.agent_init(cfg, agent, dataloader)
+
+    def agent_init(self, cfg, agent, dataloader): 
+        """
+        Agent object is passed as argument to solver.
+        Used in trading repo 
+        """
+        self.cfg = cfg
+
+        # Hyperparams
+        self.learning_rate = self.cfg.HYPERPARAMS.LEARNING_RATE
+        self.gamma = self.cfg.HYPERPARAMS.GAMMA
+        self.eps_reduction_factor = self.cfg.HYPERPARAMS.EPS_REDUCTION_FACTOR
+
+        # Training params
+        self.batch_size = self.cfg.TRAIN.BATCH_SIZE
+        self.max_steps_per_episode = self.cfg.TRAIN.MAX_STEPS_EPISODE
+        self.max_steps_per_valepisode = self.cfg.TRAIN.MAX_STEPS_VALIDATION_EPISODE
+        try:
+            self.memory = deque(maxlen=self.cfg.TRAIN.MEMORY_LEN)
+        except:
+            self.memory = None # specific module implenmentation of replay buffer 
+
+        # Env, agent, optimizer and loss
+        self.env, self.agent, self.optimizer = None, None, None
+        # TODO: Wrap dataloader like an ENV to use the same .solve method
+        # self.env = self.wrap_dataloader(dataloader)
+
+        self.agent = agent
+        self.target_agent = agent  # TODO: might need copy.deepcopy()
+
+        if self.cfg.OPTIMIZER in ALLOWED_OPTIMIZERS:
+            self.optimizer = self.create_optimizer(cfg.OPTIMIZER, self.agent.parameters())
+        else:
+            raise NotImplementedError('Optimizer name: {} not in {}'.format(self.cfg.TRAIN.OPTIMIZER, ALLOWED_OPTIMIZERS))
+
+        self.criterion = self.build_loss(cfg.TRAIN.LOSS)
+
+        # Misc
+        # self.save_path = 'experiments/' + cfg.EXPERIMENT.SUFFIX + '_' + cfg.EXPERIMENT.NAME + '.json'
+        # self.weights_path = join('weights', cfg.EXPERIMENT.NAME)
+        # self.name = cfg.EXPERIMENT.NAME
+
+
+    def base_init(self, cfg):
+        """
+        Base init function. 
+        Used originally for Single Agent RL (SARL)
+        """
         self.cfg = cfg
         self.agent_cfg = self.cfg.AGENT
         # Hyperparams

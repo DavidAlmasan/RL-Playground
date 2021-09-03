@@ -4,22 +4,22 @@ from os.path import join
 import json
 import numpy as np
 
-import tensorflow as tf
 
-from solvers.base_solver import BaseSolver
+from .base_solver import BaseSolver
 
 CUR = os.path.abspath(os.path.dirname(__file__))
 
 
 class DQNSolver(BaseSolver):
-    def __init__(self, cfg):
-        super(DQNSolver, self).__init__(cfg)
+    def __init__(self, cfg, agent=None, dataloader=None):
+        super(DQNSolver, self).__init__(cfg, agent, dataloader)
 
         self.ddqn_prob = 0
-        self.target_agent = self.create_agent(cfg.MODEL.TYPE,
-                                              cfg.MODEL.ARCH,
-                                              cfg.MODEL.MISC,
-                                              cfg.MODEL.INIT)
+        if agent is None:
+            self.target_agent = self.create_agent(cfg.MODEL.TYPE,
+                                                cfg.MODEL.ARCH,
+                                                cfg.MODEL.MISC,
+                                                cfg.MODEL.INIT)
 
     def train(self):
         itx = 0
