@@ -4,6 +4,7 @@ import numpy as np
 from collections import deque
 from termcolor import *
 import colorama
+from loguru import logger
 
 import gym
 import torch
@@ -20,21 +21,85 @@ ALLOWED_ENVIRONMENTS = ['Breakout-v0', 'Breakout-v4']
 ALLOWED_OPTIMIZERS = ['adam', 'sgd', 'rmsprop']
 ALLOWED_MODELS = ['resnet18', 'small_cnn', 'medium_cnn', 'small_mlp', 'medium_mlp', 'other']
 
-class BaseSolver():
-    def __init__(self, cfg, agent=None, dataloader=None):
+
+class ActionSpace:
+    def __init__(self, actions):
+        self.actions = actions
+        self.sample_space = list(range(2 * len(actions) + 1))
+
+    def sample(self):
+        return np.random.choice(self.sample_space)
+
+
+class EnvWrapper:
+    def __init__(self, dataloader, **kwargs):  # more like dataset but anyway
+        self.dataloader = dataloader
+        self.train_idx = 0
+        self.eval_idx = 0
+        self.max_l = len(self.dataloader)
+        self.action_space = kwargs['action_space']
+
+    def train(self):
+        self.dataloader.train()
+        self.max_l = len(self.dataloader)
+
+    def eval(self):
+        self.dataloader.eval()
+        self.max_l = len(self.dataloader)
+
+    def step(self, action):
+        info = {}
+        if self.dataloader.train:
+            self.train_idx += 1
+            s_ = self.dataloader[self.train_idx % self.max_l]
+
+            if self.train_idx == self.max_l - 1:
+                d = 0
+            else:
+                d = 1
+
+
+        else:
+            self.eval_idx += 1
+            s_ = self.dataloader[self.eval_idx % self.max_l]
+
+            if self.eval_idx == self.max_l - 1:
+                d = 0
+            else:
+                d = 1
+
+        r = self.dataloader.create_reward(action)
+        return s_, r, d, info
+
+    def reset(self):
+        if self.dataloader.train:
+            self.train_idx = 0
+
+        else:
+            self.eval_idx = 0
+        return self.dataloader[0]
+
+
+class BaseSolver:
+    def __init__(self, cfg, agent=None, dataloader=None, **kwargs):
         if agent is None:
             assert dataloader is None, 'Dataloader should also be None if agent is None'
+            self.custom_init = False
             self.base_init(cfg)
         else:
             assert dataloader is not None, 'Dataloader should also NOT be None if agent is not None'
-            self.agent_init(cfg, agent, dataloader)
+            self.custom_init = True
+            self.agent_init(cfg, agent, dataloader, kwargs['save_path'])
 
-    def agent_init(self, cfg, agent, dataloader): 
+    def agent_init(self, cfg, agent, dataloader, save_path):
         """
         Agent object is passed as argument to solver.
         Used in trading repo 
         """
         self.cfg = cfg
+        self.save_path = save_path
+        self.logger = logger
+        self.logger.add(join(self.save_path, 'log.log'), format="{time} {level} {message}", level="INFO")
 
         # Hyperparams
         self.learning_rate = self.cfg.HYPERPARAMS.LEARNING_RATE
@@ -45,6 +110,7 @@ class BaseSolver():
         self.batch_size = self.cfg.TRAIN.BATCH_SIZE
         self.max_steps_per_episode = self.cfg.TRAIN.MAX_STEPS_EPISODE
         self.max_steps_per_valepisode = self.cfg.TRAIN.MAX_STEPS_VALIDATION_EPISODE
+        self.validation_iters = self.cfg.TRAIN.VALIDATION_ITERS
         try:
             self.memory = deque(maxlen=self.cfg.TRAIN.MEMORY_LEN)
         except:
@@ -53,7 +119,7 @@ class BaseSolver():
         # Env, agent, optimizer and loss
         self.env, self.agent, self.optimizer = None, None, None
         # TODO: Wrap dataloader like an ENV to use the same .solve method
-        # self.env = self.wrap_dataloader(dataloader)
+        self.env = self.wrap_dataloader(dataloader, action_space=ActionSpace(self.cfg.ACTION_SPACE))
 
         self.agent = agent
         self.target_agent = agent  # TODO: might need copy.deepcopy()
@@ -66,10 +132,10 @@ class BaseSolver():
         self.criterion = self.build_loss(cfg.TRAIN.LOSS)
 
         # Misc
-        # self.save_path = 'experiments/' + cfg.EXPERIMENT.SUFFIX + '_' + cfg.EXPERIMENT.NAME + '.json'
-        # self.weights_path = join('weights', cfg.EXPERIMENT.NAME)
-        # self.name = cfg.EXPERIMENT.NAME
+        self.best_val_score = -np.inf
 
+    def wrap_dataloader(self, dataloader, action_space):
+        return EnvWrapper(dataloader, action_space=action_space)
 
     def base_init(self, cfg):
         """

@@ -4,6 +4,7 @@ from os.path import join
 import json
 import numpy as np
 
+import torch
 
 from .base_solver import BaseSolver
 
@@ -11,8 +12,8 @@ CUR = os.path.abspath(os.path.dirname(__file__))
 
 
 class DQNSolver(BaseSolver):
-    def __init__(self, cfg, agent=None, dataloader=None):
-        super(DQNSolver, self).__init__(cfg, agent, dataloader)
+    def __init__(self, cfg, agent=None, dataloader=None, **kwargs):
+        super(DQNSolver, self).__init__(cfg, agent, dataloader, **kwargs)
 
         self.ddqn_prob = 0
         if agent is None:
@@ -74,7 +75,7 @@ class DQNSolver(BaseSolver):
                         agent_weights = self.agent.get_weights()
                         self.target_agent.set_weights(agent_weights)
 
-                    with open(log_path,  'a') as loss_file:
+                    with open(log_path, 'a') as loss_file:
                         loss_file.write(log_str + '\n')
                     break
             if episode in self.log_episodes:
