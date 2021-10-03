@@ -47,28 +47,32 @@ class EnvWrapper:
         self.dataloader.eval()
         self.max_l = len(self.dataloader)
 
-    def step(self, action):
+    def step(self, action, funds):
         info = {}
         if self.dataloader.train:
             self.train_idx += 1
             s_ = self.dataloader[self.train_idx % self.max_l]
 
             if self.train_idx == self.max_l - 1:
-                d = 0
-            else:
                 d = 1
-
+            else:
+                d = 0
 
         else:
             self.eval_idx += 1
             s_ = self.dataloader[self.eval_idx % self.max_l]
 
             if self.eval_idx == self.max_l - 1:
-                d = 0
-            else:
                 d = 1
+            else:
+                d = 0
 
-        r = self.dataloader.create_reward(action)
+        if d:
+            return s_, 0., d, info
+        if self.dataloader.train:
+            r = self.dataloader.create_reward(action, self.train_idx % self.max_l, funds)
+        else:
+            r = self.dataloader.create_reward(action, self.eval_idx % self.max_l, funds)
         return s_, r, d, info
 
     def reset(self):
@@ -118,7 +122,6 @@ class BaseSolver:
 
         # Env, agent, optimizer and loss
         self.env, self.agent, self.optimizer = None, None, None
-        # TODO: Wrap dataloader like an ENV to use the same .solve method
         self.env = self.wrap_dataloader(dataloader, action_space=ActionSpace(self.cfg.ACTION_SPACE))
 
         self.agent = agent
