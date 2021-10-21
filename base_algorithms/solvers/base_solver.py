@@ -39,6 +39,15 @@ class EnvWrapper:
         self.max_l = len(self.dataloader)
         self.action_space = kwargs['action_space']
 
+    def return_prices(self):
+        """
+        Returns the the BASE/QUOTE bid price at market value
+        """
+        if isinstance(self.dataloader, torch.utils.data.Dataset):
+            return self.dataloader.return_prices()
+        else:
+            return self.dataloader.dataset.return_prices()
+
     def train(self):
         self.dataloader.train()
         self.max_l = len(self.dataloader)
@@ -68,11 +77,13 @@ class EnvWrapper:
                 d = 0
 
         if d:
+            info['balance'] = {'base': 0., 'quote': 0.}
             return s_, 0., d, info
         if self.dataloader.train:
-            r = self.dataloader.create_reward(action, self.train_idx % self.max_l, funds)
+            r, balance = self.dataloader.create_reward(action, self.train_idx % self.max_l, funds)
         else:
-            r = self.dataloader.create_reward(action, self.eval_idx % self.max_l, funds)
+            r, balance = self.dataloader.create_reward(action, self.eval_idx % self.max_l, funds)
+        info['balance'] = balance
         return s_, r, d, info
 
     def reset(self):
