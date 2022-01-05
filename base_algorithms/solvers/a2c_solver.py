@@ -1,3 +1,7 @@
+"""
+Implements solver for ActorCritic models
+TODO: port to pytorch
+"""
 import random
 import sys, os
 from os.path import join
@@ -13,6 +17,10 @@ CUR = os.path.abspath(os.path.dirname(__file__))
 
 
 class A2CSolver(BaseSolver):
+    """
+    Child Solver class for ActorCritic models
+    TODO: port to pytorch
+    """
     def __init__(self, cfg):
         super(A2CSolver, self).__init__(cfg)
 

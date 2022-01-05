@@ -1,12 +1,14 @@
+"""
+Implements all FFN based models
+TODO: Port to pytorch
+"""
 import tensorflow as tf
 from tensorflow.keras import layers
 
 
 class ActorCritic(tf.keras.Model):
     def __init__(self, hidden_units, action_size, init):
-        """Initialize."""
         super(ActorCritic, self).__init__()
-
         if init == 'xavier':
             self.init = tf.initializers.GlorotNormal()
         elif init == 'gauss':
@@ -25,7 +27,6 @@ class ActorCritic(tf.keras.Model):
 
 class Agent(tf.keras.Model):
     def __init__(self, hidden_units, action_size, dueling=True, init='xavier'):
-        """Initialize."""
         super(Agent, self).__init__()
 
         if init == 'xavier':

@@ -1,3 +1,8 @@
+"""
+Implements DQN solver based on BaseSolver
+TODO: port to pytorch
+      hint: draw inspiration from trading repo solvers
+"""
 import random
 import sys, os
 from os.path import join
@@ -12,6 +17,10 @@ CUR = os.path.abspath(os.path.dirname(__file__))
 
 
 class DQNSolver(BaseSolver):
+    """
+    Child Solver class for training models using the DQN algorithm
+        Playing Atari with Deep Reinforcement Learning: https://arxiv.org/pdf/1312.5602.pdf
+    """
     def __init__(self, cfg, agent=None, dataloader=None, **kwargs):
         super(DQNSolver, self).__init__(cfg, agent, dataloader, **kwargs)
 
@@ -23,6 +32,9 @@ class DQNSolver(BaseSolver):
                                                 cfg.MODEL.INIT)
 
     def train(self):
+        """
+        Top level training function
+        """
         itx = 0
         best_score = 0.
         json_path = join(CUR, self.save_path)
@@ -84,6 +96,9 @@ class DQNSolver(BaseSolver):
         print('Finished training!')
 
     def train_step(self, agent, target_agent):
+        """
+        Implements gradient based optimisation step for agent drawing samples from the Memory buffer
+        """
         if len(self.memory) < self.batch_size:
             return 0.
         minibatch = random.sample(self.memory, self.batch_size)

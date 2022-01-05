@@ -1,3 +1,9 @@
+"""
+Implements solver for All Asynchronous model solvers
+NOTE: if model is ActorCritic, Solver becomes A3C
+TODO: port to pytorch
+"""
+
 import sys, os
 from os.path import join
 import numpy as np
