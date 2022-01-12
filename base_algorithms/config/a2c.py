@@ -6,19 +6,31 @@ def get_config():
 
     # Experiment
     C.EXPERIMENT = ConfigDict()
-    C.EXPERIMENT.NAME = 'Breakout-v4'
+    C.EXPERIMENT.NAME = 'CartPole-v0'
     C.EXPERIMENT.SUFFIX = 'trial1'
+
+    # Solver
+    C.SOLVER = ConfigDict()
+    C.SOLVER.TYPE = 'a2c'
+    C.SOLVER.ASYNC = False
 
     # Environment
     C.ENV = ConfigDict()
     C.ENV.NAME = 'Breakout-v4'
 
+    # Data
     C.DATA = ConfigDict()
     C.DATA.INPUT_SHAPE = (84, 84)
+
     # Agent
     C.AGENT = ConfigDict()
     ### Allowed models: ['resnet18', 'small_cnn', 'medium_cnn', 'small_mlp', 'medium_mlp', 'other']
-    C.AGENT.MODEL = 'small_cnn' # other expects a class named OtherAgent from a module called other_model.py
+    C.AGENT.MODEL = 'other'  # other expects a custom model with parameters defined in KWARGS
+    C.AGENT.KWARGS = ConfigDict()
+    C.AGENT.KWARGS.TYPE = 'ffn'
+    C.AGENT.KWARGS.POLICY_TYPE = C.SOLVER.TYPE
+    C.AGENT.KWARGS.ARCHITECTURE = [512, 256, 64]
+
     C.AGENT.HYPERPARAMS = ConfigDict()
     C.AGENT.HYPERPARAMS.LEARNING_RATE = 1e-4
     C.AGENT.HYPERPARAMS.GAMMA = 1.0
@@ -38,18 +50,7 @@ def get_config():
     C.TRAIN.BATCH_SIZE = 32
     C.TRAIN.TOT_TRAIN_STEPS = 100000
 
-    # Rainbow params
-    C.RAINBOW = ConfigDict()
-    C.RAINBOW.TARGET_NET_COPY_TRAINSTEPS = 50
-    C.RAINBOW.DOUBLE_DQN = False 
-    
-    # Replay buffer 
-    C.RAINBOW.REPLAY_BUFFER = ConfigDict()
-    C.RAINBOW.REPLAY_BUFFER.MEMORY_LEN = 1e5
-    C.RAINBOW.REPLAY_BUFFER.ALPHA = 0.5
-    C.RAINBOW.REPLAY_BUFFER.BETA = 0.5
-
     return C
 
 
-    
+

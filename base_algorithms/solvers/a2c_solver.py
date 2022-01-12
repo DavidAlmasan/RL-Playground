@@ -9,9 +9,7 @@ import json
 import numpy as np
 from itertools import accumulate
 
-import tensorflow as tf
-
-from solvers.base_solver import BaseSolver
+from base_algorithms.solvers.base_solver import BaseSolver
 
 CUR = os.path.abspath(os.path.dirname(__file__))
 
@@ -19,7 +17,6 @@ CUR = os.path.abspath(os.path.dirname(__file__))
 class A2CSolver(BaseSolver):
     """
     Child Solver class for ActorCritic models
-    TODO: port to pytorch
     """
     def __init__(self, cfg):
         super(A2CSolver, self).__init__(cfg)
@@ -38,21 +35,6 @@ class A2CSolver(BaseSolver):
 
     def remember(self, state, action, value, reward, next_state, done):
         self.memory.append((state, action, value, reward, next_state, done))
-
-    # def create_agent(self, agent_type, arch, misc, init):
-    #     # Get input shape
-    #     proxy_env = self.create_env(self.cfg.ENV.NAME)
-    #     s = proxy_env.reset()
-    #     del proxy_env
-    #     # Agent
-    #     if agent_type == 'ffn':
-    #         from models.ffn import ActorCritic
-    #         agent = ActorCritic(arch, self.env.action_space.n, init)
-    #         agent.build((None, s.shape[-1]))
-    #         return agent
-    #
-    #     else:
-    #         raise NotImplementedError('TODO')
 
     def store_episode(self, idx):
         state = self.env.reset()

@@ -20,7 +20,7 @@ import torch.optim
 import torch.nn
 from torchvision import transforms
 
-from ...base_algorithms.utils.utils import bottom_n_percent, play_tf
+from base_algorithms.utils.utils import bottom_n_percent, play_tf
 
 colorama.init()
 # Some globals
@@ -223,15 +223,19 @@ class BaseSolver:
         try:
             self.memory = deque(maxlen=cfg.TRAIN.MEMORY_LEN)
         except:
-            self.memory = None # specific module implenmentation of replay buffer 
+            self.memory = None  # specific module implementation of replay buffer
 
-        # Env, agent, optimizer and loss
-        self.env, self.agent, self.optimizer = None, None, None
-        if cfg.EXPERIMENT.NAME in ALLOWED_ENVIRONMENTS:
-            self.env = self.create_env(cfg.EXPERIMENT.NAME)
-            self.val_env = self.create_env(cfg.EXPERIMENT.NAME)
+        # Env, agent, optimizer, loss and misc
+        self.env, self.val_env = None, None
+        self.agent, self.target_agent = None, None
+        self.criterion, self.optimizer = None, None
+        self.name, self.save_path, self.weights_path = None, None, None
+
+        if cfg.ENV.NAME in ALLOWED_ENVIRONMENTS:
+            self.env = self.create_env(cfg.ENV.NAME)
+            self.val_env = self.create_env(cfg.ENV.NAME)
         else:
-            raise NotImplementedError('Experiment name: {} not in {}'.format(cfg.EXPERIMENT.NAME, ALLOWED_ENVIRONMENTS))
+            raise NotImplementedError('Environment name: {} not in {}'.format(cfg.ENV.NAME, ALLOWED_ENVIRONMENTS))
         
         if self.agent_cfg.MODEL in ALLOWED_MODELS:
             self.agent = self.create_agent(self.agent_cfg)
@@ -363,11 +367,35 @@ class BaseSolver:
             raise NotImplementedError(f'Model name: resnet18 not implemented')
         elif agent_config.MODEL == 'small_cnn':
             from rainbow.model import SmallCNN as Agent
+        elif agent_config.MODEL == 'other':
+            agent = self.generate_model_from_cfg(agent_config.KWARGS, s.shape, action_space_length)
+            return agent
         else:
             raise NotImplementedError(f'Model name: {agent_config.MODEL} not implemented')
         
         agent = Agent(action_space_length)
         return agent
+
+    def generate_model_from_cfg(self, params, state_space_shape, action_space_length):
+        """
+        Returns a nn.Model agent defined by the params (agent_config.KWARGS)
+        Expects a KWARGS dictionary containing all the necessary info to generate the model
+        FFN models with single dim input spaces supported for now,
+        when KWARGS changes, will adapt this function accordingly
+        """
+        if params.TYPE == 'ffn':
+            if len(state_space_shape) != 1:
+                raise NotImplementedError(f'state space ndim({len(state_space_shape)}) > 1')
+            if params.POLICY_TYPE == 'a2c':
+                from base_algorithms.models.ffn import ActorCritic
+                # Ignore Batch dimension of state_space_shape
+                agent = ActorCritic(state_space_shape[-1], params.ARCHITECTURE, action_space_length)
+                return agent
+            else:
+                raise NotImplementedError(f'Policy TYPE {params.POLICY_TYPE} not currently supported')
+
+        else:
+            raise NotImplementedError(f'Model TYPE {params.TYPE} not currently supported')
 
     def epsilon_greedy(self, t, s):
         """
