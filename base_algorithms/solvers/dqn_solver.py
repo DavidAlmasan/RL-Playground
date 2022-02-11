@@ -4,10 +4,11 @@ TODO: port to pytorch
       hint: draw inspiration from trading repo solvers
 """
 import random
-import sys, os
+import os
 from os.path import join
 import json
 import numpy as np
+import collections
 
 import torch
 
@@ -25,11 +26,6 @@ class DQNSolver(BaseSolver):
         super(DQNSolver, self).__init__(cfg, agent, dataloader, **kwargs)
 
         self.ddqn_prob = 0
-        if agent is None:
-            self.target_agent = self.create_agent(cfg.MODEL.TYPE,
-                                                cfg.MODEL.ARCH,
-                                                cfg.MODEL.MISC,
-                                                cfg.MODEL.INIT)
 
     def train(self):
         """
@@ -37,26 +33,18 @@ class DQNSolver(BaseSolver):
         """
         itx = 0
         best_score = 0.
-        json_path = join(CUR, self.save_path)
+        json_path = join(self.save_path, 'metrics.json')
         log_path = json_path[:-4] + 'txt'
 
         with open(log_path, 'w') as loss_file:
             loss_file.write('Metrics:' + '\n')
 
-        with open(json_path, 'w') as json_file:
-            json.dump(self.cfg, json_file, sort_keys=True,
-                      indent=4, separators=(',', ': '))
-
         for episode in range(self.max_episodes):
             loss = 0.
-            if episode >= self.wait_episodes:
-                print('Training at episode: {}'.format(episode + 1))
-            else:
-                print('Burn in period. Not training yet')
             s = self.env.reset()
             for t in range(self.max_steps_per_episode):
                 # Epsilon greedy with eps = 1/(itx+1)
-                action, eps = self.epsilon_greedy(itx, s)
+                action, eps = self.epsilon_greedy(s)
                 s_, r, d, _ = self.env.step(action)
                 if d:
                     r = -100.
@@ -66,18 +54,17 @@ class DQNSolver(BaseSolver):
                               self.preprocess(s_),
                               d)
                 s = s_
-                if episode >= self.wait_episodes:
-                    if np.random.uniform(0, 1) > self.ddqn_prob:
-                        loss += self.train_step(self.agent, self.target_agent)
-                    else:
-                        loss += self.train_step(self.target_agent, self.agent)
+                if np.random.uniform(0, 1) > self.ddqn_prob:
+                    loss += self.train_step(self.agent, self.target_agent)
+                else:
+                    loss += self.train_step(self.target_agent, self.agent)
 
-                itx += 1
                 if d:
                     loss = float("{:.2f}".format(loss / (t + 1)))
-                    episode_str = 'Episode length: {} with final eps: {}, and loss {}'.format(t + 1, eps, loss)
-                    print(episode_str)
-                    mu, std, bot_mu = self.validate_agent()
+                    self.logger.info(f'Episode length: {t + 1} with final eps: {eps}, and loss {loss}')
+                    break
+
+                    # mu, std, bot_mu = self.validate_agent()
                     log_str = 'mean: {}, std: {}, bottom_mean: {}, loss: {}'.format(mu, std, bot_mu, loss)
                     if mu > best_score:
                         best_score = mu
@@ -91,7 +78,8 @@ class DQNSolver(BaseSolver):
                         loss_file.write(log_str + '\n')
                     break
             if episode in self.log_episodes:
-                self.save_agent(self.weights_path, episode)
+                weights_save_path = join(self.weights_path, str(episode) + '.pt')
+                self.save_agent(weights_save_path)
 
         print('Finished training!')
 
@@ -99,29 +87,42 @@ class DQNSolver(BaseSolver):
         """
         Implements gradient based optimisation step for agent drawing samples from the Memory buffer
         """
-        if len(self.memory) < self.batch_size:
-            return 0.
+        agent.train()
+        target_agent.eval()
+
+        if isinstance(self.memory, collections.deque):
+            if len(self.memory) < self.batch_size:
+                return 0.
+        else:
+            raise NotImplementedError('Replay buffer only available in Rainbow')
+
         minibatch = random.sample(self.memory, self.batch_size)
-        state = tf.stack([minibatch[i][0][0] for i in range(self.batch_size)])
-        action = [minibatch[i][1] for i in range(self.batch_size)]
-        reward = [minibatch[i][2] for i in range(self.batch_size)]
-        next_state = tf.stack([minibatch[i][3][0] for i in range(self.batch_size)])
-        done = [minibatch[i][4] for i in range(self.batch_size)]
+        state = self.preprocess(torch.stack([minibatch[i][0][0] for i in range(self.batch_size)]))
+        action = torch.tensor([minibatch[i][1] for i in range(self.batch_size)])
+        reward = torch.tensor([minibatch[i][2] for i in range(self.batch_size)])
+        next_state = self.preprocess(torch.stack([minibatch[i][3][0] for i in range(self.batch_size)]))
+        done = torch.tensor([minibatch[i][4] for i in range(self.batch_size)])
 
-        q_values_t = agent.predict(state)
-        q_values_t1 = tf.math.argmax(agent.predict(next_state), axis=-1)
+        with torch.no_grad():
+            q_values_t, _ = agent(state)
+            q_values_t1 = torch.argmax(agent(next_state)[0], dim=-1)
 
-        for i in range(self.batch_size):
-            if done[i]:
-                q_values_t[i][action[i]] = reward[i]
-            else:
-                q_values_t[i][action[i]] = reward[i] + \
-                                           self.gamma * target_agent.predict(next_state)[i][q_values_t1[i]]
+            target_agent_q_values_s_ = target_agent(next_state)[0]
+            # Create targets
+            for i in range(self.batch_size):
+                if done[i]:
+                    q_values_t[i][action[i]] = reward[i]
+                else:
+                    q_values_t[i][action[i]] = reward[i] + \
+                                               self.gamma * target_agent_q_values_s_[i][q_values_t1[i]]
 
-        with tf.GradientTape() as tape:
-            predictions = agent(state, training=True)
-            loss = self.criterion(q_values_t, predictions)
-            grads = tape.gradient(loss, agent.trainable_variables)
-            self.optimizer.apply_gradients(zip(grads, agent.trainable_variables))
+        predictions, _ = agent(state)
 
-            return loss
+        # Task Policy head training
+        # noinspection PyCallingNonCallable
+        loss = self.criterion(predictions, q_values_t).mean()
+        loss.backward()
+        self.optimizer.step()
+
+        return loss
+

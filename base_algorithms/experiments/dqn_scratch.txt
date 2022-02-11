@@ -1,9 +1,0 @@
-Metrics:
-mean: 9.8, std: 2.33, bottom_mean: 8.0, loss: 0.0
-mean: 10.01, std: 2.72, bottom_mean: 8.0, loss: 0.0
-mean: 10.55, std: 3.87, bottom_mean: 8.0, loss: 0.0
-mean: 10.08, std: 2.82, bottom_mean: 8.0, loss: 0.0
-mean: 9.98, std: 3.02, bottom_mean: 8.0, loss: 0.0
-mean: 9.45, std: 0.79, bottom_mean: 8.0, loss: 8836.71
-mean: 9.32, std: 0.72, bottom_mean: 8.0, loss: 11107.5
-mean: 9.37, std: 0.78, bottom_mean: 8.0, loss: 12819.88

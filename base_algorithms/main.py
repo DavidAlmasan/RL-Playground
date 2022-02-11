@@ -7,10 +7,12 @@ CUR = os.path.abspath(os.path.dirname(__file__))
 ###################################
 # Name of cfg used for experiment #
 ###################################
-cfg_name = 'a2c'
+cfg_name = 'dqn'
 
 if cfg_name == 'a2c':
-    from base_algorithms.config.a2c import get_config
+    from config.a2c import get_config
+elif cfg_name == 'dqn':
+    from config.dqn import get_config
 
 cfg = get_config()
 # Instantiate the solver
@@ -32,4 +34,4 @@ else:
         raise NotImplementedError('TODO')
 
 # Train
-# solver.train()
+solver.train()

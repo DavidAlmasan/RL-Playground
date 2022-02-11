@@ -1,2 +1,0 @@
-Metrics:
-mean: 243.4, std: 23.2, bottom_mean: 204.0, loss: 0.0

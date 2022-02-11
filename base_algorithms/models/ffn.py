@@ -4,26 +4,40 @@ TODO: Port to pytorch
 """
 import torch
 import torch.nn as nn
+import numpy as np
 
 
-class ActorCritic(nn.Module):
+class SimpleFFN(nn.Module):
     """
-    Actor-Critic (A2C) FFN model with ReLU activations
+    Base FFN model with ReLU activations
     """
     def __init__(self, input_size, hidden_units, action_size):
-        super(ActorCritic, self).__init__()
+        super(SimpleFFN, self).__init__()
         self.action_size = action_size
         hidden_units = [input_size] + hidden_units
         self.fc_layers = [nn.Linear(hidden_units[idx], hidden_units[idx + 1])
                                     for idx in range(len(hidden_units) - 1)]
         self.fc_layers = nn.ModuleList(self.fc_layers)
-        self.actor = nn.Linear(hidden_units[-1], action_size)
+        self.q_head = nn.Linear(hidden_units[-1], action_size)
+
+    def forward(self, x):
+        for fc_layer in self.fc_layers:
+            x = nn.ReLU()(fc_layer(x))
+        return self.q_head(x)
+
+
+class ActorCritic(SimpleFFN):
+    """
+    Actor-Critic (A2C) FFN model with ReLU activations
+    """
+    def __init__(self, input_size, hidden_units, action_size):
+        super(ActorCritic, self).__init__(input_size, hidden_units, action_size)
         self.critic = nn.Linear(hidden_units[-1], 1)
 
     def forward(self, x):
         for fc_layer in self.fc_layers:
             x = nn.ReLU()(fc_layer(x))
-        return self.actor(x), self.critic(x)
+        return self.q_head(x), self.critic(x)
 
 
 # class Agent(tf.keras.Model):

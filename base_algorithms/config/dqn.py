@@ -12,7 +12,7 @@ def get_config():
 
     # Solver
     C.SOLVER = ConfigDict()
-    C.SOLVER.TYPE = 'a2c'
+    C.SOLVER.TYPE = 'dqn'
     C.SOLVER.ASYNC = False
 
     # Environment
@@ -47,7 +47,7 @@ def get_config():
     C.TRAIN.LOSS = 'mse'
     C.TRAIN.MAX_STEPS_EPISODE = 5000
     C.TRAIN.MAX_STEPS_VALIDATION_EPISODE = 1000
-    C.TRAIN.MAX_EPISODES = 10
+    C.TRAIN.MAX_EPISODES = 1000
     C.TRAIN.MEMORY_LEN = 10
     C.TRAIN.REPLAY_PERIOD = 4
     C.TRAIN.EVAL_PERIOD = 4 * 100

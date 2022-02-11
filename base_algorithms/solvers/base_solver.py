@@ -7,7 +7,9 @@ Implements the BaseSolver class for optimising all NN models through RL
     BaseSolver
 """
 import sys, os
+from shutil import rmtree
 from os.path import join
+from PIL import Image
 import numpy as np
 from collections import deque
 from termcolor import *
@@ -25,7 +27,7 @@ from base_algorithms.utils.utils import bottom_n_percent, play_tf
 colorama.init()
 # Some globals
 CUR = os.path.abspath(os.path.dirname(__file__))
-ALLOWED_ENVIRONMENTS = ['Breakout-v0', 'Breakout-v4']
+ALLOWED_ENVIRONMENTS = ['Breakout-v0', 'Breakout-v4', 'CartPole-v0']
 ALLOWED_OPTIMIZERS = ['adam', 'sgd', 'rmsprop']
 ALLOWED_MODELS = ['resnet18', 'small_cnn', 'medium_cnn', 'small_mlp', 'medium_mlp', 'other']
 
@@ -142,6 +144,14 @@ class BaseSolver:
 
     """
     def __init__(self, cfg, agent=None, dataloader=None, **kwargs):
+        # Preprocessing
+        self.preprocess_dict = {
+            'nparray_to_pil': Image.fromarray,
+            'np_squeeze': np.squeeze,
+            'gray3': transforms.Grayscale(3),
+            'gray1': transforms.Grayscale(1),
+        }
+
         if agent is None:
             assert dataloader is None, 'Dataloader should also be None if agent is None'
             self.custom_init = False
@@ -150,6 +160,9 @@ class BaseSolver:
             assert dataloader is not None, 'Dataloader should also NOT be None if agent is not None'
             self.custom_init = True
             self.agent_init(cfg, agent, dataloader, kwargs['save_path'])
+        self.train_iter = 0
+
+
 
     def agent_init(self, cfg, agent, dataloader, save_path):
         """
@@ -210,9 +223,22 @@ class BaseSolver:
         self.eps_reduction_factor = self.agent_cfg.HYPERPARAMS.EPS_REDUCTION_FACTOR
 
         # Data transforms
-        self.transforms = transforms.Compose([transforms.Resize(self.cfg.DATA.INPUT_SHAPE),
-                                              transforms.Grayscale(),
-                                              transforms.ToTensor()])
+        if 'PREPROCESS' in self.cfg.DATA.keys():
+            self.transforms = []
+            for p in self.cfg.DATA.PREPROCESS:
+                # Does not include transforms with keywords or totensor
+                t = self.preprocess_dict[p]
+                self.transforms.append(t)
+
+            if 'INPUT_SHAPE' in self.cfg.DATA.keys():
+                self.transforms.append(transforms.Resize(self.cfg.DATA.INPUT_SHAPE))
+                self.transforms.append(transforms.ToTensor())
+            else:
+                self.transforms.append(torch.tensor)
+        else:
+            self.transforms = [transforms.Resize(self.cfg.DATA.INPUT_SHAPE),
+                                                  transforms.Grayscale(),
+                                                  transforms.ToTensor()]
 
         # Training params
         self.batch_size = cfg.TRAIN.BATCH_SIZE
@@ -251,8 +277,17 @@ class BaseSolver:
         self.criterion = self.build_loss(cfg.TRAIN.LOSS)
 
         # Misc
-        self.save_path = 'experiments/' + cfg.EXPERIMENT.SUFFIX + '_' + cfg.EXPERIMENT.NAME + '.json'
-        self.weights_path = join('weights', cfg.EXPERIMENT.NAME)
+        self.logger = logger
+        self.save_path = join('experiments/', cfg.EXPERIMENT.NAME + '_' + cfg.EXPERIMENT.SUFFIX)
+        while os.path.isdir(self.save_path):
+            self.logger.warning(f'Experiment exists at path: {self.save_path}. Appending <+> to save name...')
+            self.save_path += '+'
+        self.weights_path = join(self.save_path, 'weights')
+        try:
+            os.makedirs(self.weights_path)
+        except:
+            self.logger.warning(f'Experiment exists at path: {self.save_path}. Exiting...')
+            os.makedirs(self.weights_path)
         self.name = cfg.EXPERIMENT.NAME
 
 
@@ -280,7 +315,9 @@ class BaseSolver:
         Base preprocessing function for Environment states
         Particular implementation by Child Solver classes
         """
-        return self.transforms(state)
+        for t in self.transforms:
+            state = t(state)
+        return state.type(torch.FloatTensor)
 
     def validate_agent(self, games, num_steps, render, multihead=False):
         """
@@ -330,15 +367,11 @@ class BaseSolver:
     def get_env(self):
         return self.env
 
-    def save_agent(self, path, epoch):
+    def save_agent(self, path):
         """
         Saves the agent weights at a given epoch
-        TODO: port to pytorch
         """
-        if self.weights_path is not None:
-            os.makedirs(self.weights_path, exist_ok=True)
-            path = join(path, '{}-epoch_{}.ckpt'.format(self.name, epoch))
-            self.agent.save_weights(path)
+        torch.save(self.agent.state_dict(), path)
 
     def create_optimizer(self, optimizer_type, params):
         """
@@ -358,7 +391,7 @@ class BaseSolver:
         Returns an agent model given an agent config
         """
         # Get input shape
-        proxy_env = self.create_env(self.cfg.EXPERIMENT.NAME)
+        proxy_env = self.create_env(self.cfg.ENV.NAME)
         s = proxy_env.reset()
         action_space_length = proxy_env.action_space.n
         del proxy_env
@@ -391,26 +424,32 @@ class BaseSolver:
                 # Ignore Batch dimension of state_space_shape
                 agent = ActorCritic(state_space_shape[-1], params.ARCHITECTURE, action_space_length)
                 return agent
+            elif params.POLICY_TYPE == 'dqn':
+                from base_algorithms.models.ffn import SimpleFFN
+                # Ignore Batch dimension of state_space_shape
+                agent = SimpleFFN(state_space_shape[-1], params.ARCHITECTURE, action_space_length)
+                return agent
+
             else:
                 raise NotImplementedError(f'Policy TYPE {params.POLICY_TYPE} not currently supported')
 
         else:
             raise NotImplementedError(f'Model TYPE {params.TYPE} not currently supported')
 
-    def epsilon_greedy(self, t, s):
+    def epsilon_greedy(self, s):
         """
         Epsilon-greedy strategy for action selection at time t, given state s
         """
-        eps = max(0.1, self.eps_reduction_factor ** t)
+        eps = max(0.1, self.eps_reduction_factor ** self.train_iter)
         eps = float("{:.2f}".format(eps))
-        # s = self.preprocess(s)
+        s = self.preprocess(s)
         action_space = self.agent(s)
         if eps <= np.random.uniform(0, 0.9999):
             # Perform explore action
             action = self.env.action_space.sample()
         else:
             # Perform greedy action
-            action = torch.argmax(action_space, dim=-1)
+            action = torch.argmax(action_space, dim=-1).numpy()
         return action, eps
 
     def remember(self, state, action, reward, next_state, done):
@@ -425,3 +464,7 @@ class BaseSolver:
     def train_step(self, agent):
         self.logger.info('Implementation depends on type of solver used')
 
+    def stopping_criterion(self):
+        if self.train_iter >= self.max_steps_per_episode:
+            return True
+        return False
