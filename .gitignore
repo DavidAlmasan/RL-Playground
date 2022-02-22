@@ -2,3 +2,4 @@
 *.pyo
 checkpoint*
 weights/
+*/experiments/

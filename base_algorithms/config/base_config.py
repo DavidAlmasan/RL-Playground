@@ -1,3 +1,6 @@
+"""
+Implements a cfg variable to control parameters of experiment
+"""
 import os
 import numpy as np
 from easydict import EasyDict as edict
@@ -51,8 +54,10 @@ cfg.ASYNC.DOWNLOAD_CYCLE = 10
 cfg.ASYNC.UPLOAD_CYCLE = 20
 cfg.ASYNC.VALIDATE_CYCLE = 5
 
+
 def _merge_a_into_b(a, b):
-    """Merge config dictionary a into config dictionary b, clobbering the
+    """
+    Merge config dictionary a into config dictionary b, clobbering the
     options in b whenever they are also specified in a.
     """
     if type(a) is not edict:
@@ -86,7 +91,9 @@ def _merge_a_into_b(a, b):
 
 
 def cfg_from_file(filename):
-    """Load a config file and merge it into the default options."""
+    """
+    Load a config file and merge it into the default options
+    """
     import yaml
     with open(filename, 'r') as f:
         yaml_cfg = edict(yaml.load(f, Loader=yaml.FullLoader))

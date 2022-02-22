@@ -1,3 +1,9 @@
+"""
+Implements solver for All Asynchronous model solvers
+NOTE: if model is ActorCritic, Solver becomes A3C
+TODO: port to pytorch
+"""
+
 import sys, os
 from os.path import join
 import numpy as np
@@ -5,19 +11,9 @@ from collections import deque
 from termcolor import *
 import colorama
 import threading
-from copy import deepcopy
-from itertools import accumulate
 import json
 
-
-import gym
-import tensorflow as tf
-from tensorflow.keras.optimizers import Adam, RMSprop
-from tensorflow.keras.losses import MeanSquaredError, Huber
-
-from utils.utils import bottom_n_percent, play
-
-from solvers.base_solver import BaseSolver
+from base_algorithms.solvers.base_solver import BaseSolver
 
 colorama.init()
 CUR = os.path.abspath(os.path.dirname(__file__))

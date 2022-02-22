@@ -1,34 +1,34 @@
 import sys, os
 from os.path import join
 
-from config.base_config import cfg, cfg_from_file
-from solvers.dqn_solver import DQNSolver
-from solvers.ddqn_solver import DDQNSolver
-from solvers.a2c_solver import A2CSolver
-from solvers.async_solver import AsyncSolver
-
 
 CUR = os.path.abspath(os.path.dirname(__file__))
 
 ###################################
 # Name of cfg used for experiment #
 ###################################
-cfg_name = 'a2c.yaml'
+cfg_name = 'dqn'
 
-# Parse new config into default one
-if cfg_name is not None:
-    cfg_path = join(*[CUR, 'config', cfg_name])
-    cfg_from_file(cfg_path)
+if cfg_name == 'a2c':
+    from config.a2c import get_config
+elif cfg_name == 'dqn':
+    from config.dqn import get_config
 
+cfg = get_config()
 # Instantiate the solver
-if cfg.ASYNC.USE:
+if cfg.SOLVER.ASYNC:
+    raise NotImplementedError(f'Async solver not ported to torch yet')
+    from solvers.async_solver import AsyncSolver
     solver = AsyncSolver(cfg)
 else:
-    if cfg.TYPE == 'dqn':
+    if cfg.SOLVER.TYPE == 'dqn':
+        from solvers.dqn_solver import DQNSolver
         solver = DQNSolver(cfg)
-    elif cfg.TYPE == 'ddqn':
+    elif cfg.SOLVER.TYPE == 'ddqn':
+        from solvers.ddqn_solver import DDQNSolver
         solver = DDQNSolver(cfg)
-    elif cfg.TYPE == 'a2c':
+    elif cfg.SOLVER.TYPE == 'a2c':
+        from solvers.a2c_solver import A2CSolver
         solver = A2CSolver(cfg)
     else:
         raise NotImplementedError('TODO')

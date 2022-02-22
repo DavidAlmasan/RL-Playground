@@ -16,7 +16,7 @@ class Data:
     weight: float 
     index: int 
 
-class ReplayBuffer():
+class ReplayBuffer:
     """
     Replay Buffer as in  https://arxiv.org/pdf/1511.05952.pdf
     Changes to bring: Maybe use binary heap as described in the paper instead of dict 

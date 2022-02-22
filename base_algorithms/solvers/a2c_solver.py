@@ -1,50 +1,30 @@
+"""
+Implements solver for ActorCritic models
+TODO: port to pytorch
+"""
 import random
-import sys, os
+import os
 from os.path import join
 import json
 import numpy as np
 from itertools import accumulate
 
-import tensorflow as tf
+import torch
 
-from solvers.base_solver import BaseSolver
+from base_algorithms.solvers.base_solver import BaseSolver
 
 CUR = os.path.abspath(os.path.dirname(__file__))
 
 
 class A2CSolver(BaseSolver):
+    """
+    Child Solver class for ActorCritic models
+    """
     def __init__(self, cfg):
         super(A2CSolver, self).__init__(cfg)
 
-    def epsilon_greedy(self, t, s):
-        eps = max(0.1, self.eps_red_factor ** t)
-        eps = float("{:.2f}".format(eps))
-        action_space = np.squeeze(self.agent(s)[0].numpy())
-        if eps <= np.random.uniform(0, 0.9999):
-            # Perform explore action
-            action = self.env.action_space.sample()
-        else:
-            # Perform greedy action
-            action = np.argmax(action_space)
-        return action, eps
-
     def remember(self, state, action, value, reward, next_state, done):
         self.memory.append((state, action, value, reward, next_state, done))
-
-    # def create_agent(self, agent_type, arch, misc, init):
-    #     # Get input shape
-    #     proxy_env = self.create_env(self.cfg.ENV.NAME)
-    #     s = proxy_env.reset()
-    #     del proxy_env
-    #     # Agent
-    #     if agent_type == 'ffn':
-    #         from models.ffn import ActorCritic
-    #         agent = ActorCritic(arch, self.env.action_space.n, init)
-    #         agent.build((None, s.shape[-1]))
-    #         return agent
-    #
-    #     else:
-    #         raise NotImplementedError('TODO')
 
     def store_episode(self, idx):
         state = self.env.reset()
@@ -53,8 +33,10 @@ class A2CSolver(BaseSolver):
         states, actions, values, rewards, next_states, dones = [], [], [], [], [], []
 
         while not done and t < self.max_steps_per_episode:
+
             state = self.preprocess(state)
-            action_space, value_space = self.agent(state, training=False)
+            self.agent.eval()
+            action_space, value_space = self.agent(state)
             action = tf.math.argmax(action_space[0]).numpy()
 
             # Use epsilon greedy
@@ -92,22 +74,69 @@ class A2CSolver(BaseSolver):
 
         return rewards
 
-    def train(self, async_solver=False):
-        if async_solver:
-            self.wait_episodes = 0
-            self.max_episodes = 1
-        itx = 0
+    def epsilon_greedy(self, s):
+        """
+        Epsilon-greedy strategy for action selection at time t, given state s
+        """
+        self.agent.eval()
+        eps = max(0.1, self.eps_reduction_factor ** self.train_iter)
+        eps = float("{:.2f}".format(eps))
+        action_space, value = self.agent(s)
+        if eps <= np.random.uniform(0, 0.9999):
+            # Perform explore action
+            action = self.env.action_space.sample()
+        else:
+            # Perform greedy action
+            action = torch.argmax(action_space, dim=-1).numpy()
+        self.agent.train()
+        return action, value
+
+    def train(self):
+        self.logger.info(f'Training Agent using A2C Method')
         best_score = 0.
-        json_path = join(CUR, self.save_path)
+        loss = 0
+        json_path = join(self.save_path, 'info.json')
         log_path = json_path[:-4] + 'txt'
 
-        if not async_solver:
-            with open(log_path, 'w') as loss_file:
-                loss_file.write('Metrics:' + '\n')
+        with open(json_path, 'w', encoding='utf-8') as json_file:
+            json.dump(self.cfg.to_json(), json_file, ensure_ascii=False, indent=4)
+        with open(log_path, 'w') as loss_file:
+            loss_file.write('Metrics:' + '\n')
+        s = self.env.reset()
 
-            with open(json_path, 'w') as json_file:
-                json.dump(self.cfg, json_file, sort_keys=True,
-                          indent=4, separators=(',', ': '))
+        # TODO: Finish this
+        while True:
+            if self.stopping_criterion():
+                break
+            s = self.preprocess(s)
+            action, value = self.epsilon_greedy(s)
+            s_, r, d, info = self.env.step(action)
+            self.remember(s,
+                          action,
+                          value,
+                          r,
+                          s_,
+                          d)
+            # Update to next states
+            s = s_
+            # Train step
+            loss = self.train_step(self.agent, self.target_agent)
+
+            self.logger.info(f'Loss: {loss}; Iter: {self.train_iter}')
+            self.train_iter += 1
+
+            if self.train_iter % self.validation_iters == 0:
+                self.validate_agent()
+
+
+        ### Old
+        best_score = 0.
+        json_path = join(CUR, self.save_path)
+
+
+        with open(json_path, 'w') as json_file:
+            json.dump(self.cfg, json_file, sort_keys=True,
+                      indent=4, separators=(',', ': '))
 
         for episode in range(self.max_episodes):
             itx, ep = self.store_episode(itx)
@@ -173,7 +202,7 @@ class A2CSolver(BaseSolver):
         loss, grads = self.train_step(agent, state, action_indeces, reward)
         return loss, grads
 
-    def train_step(self, agent, state, action_indeces, reward):
+    def train_step(self, agent, state):
         with tf.GradientTape() as tape:
             q_values_t, state_values_t = agent(state)
             q_values_probs = tf.nn.softmax(q_values_t)

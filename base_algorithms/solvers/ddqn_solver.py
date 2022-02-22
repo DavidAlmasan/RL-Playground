@@ -1,3 +1,8 @@
+"""
+Implements DQN solver based on BaseSolver
+TODO: port to pytorch
+"""
+
 import sys, os
 import numpy as np
 
@@ -5,6 +10,10 @@ from solvers.dqn_solver import DQNSolver
 
 
 class DDQNSolver(DQNSolver):
+    """
+        Child Solver class for training models using the Double DQN algorithm
+            Deep Reinforcement Learning with Double Q-learning: https://arxiv.org/pdf/1509.06461.pdf
+        """
     def __init__(self, cfg):
         super(DDQNSolver, self).__init__(cfg)
         self.ddqn_prob = 0.5
